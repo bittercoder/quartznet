@@ -33,11 +33,6 @@ namespace Quartz.Examples.Example11
 	{
 		private readonly int numberOfJobs = 500;
 
-		public LoadExample(int inNumberOfJobs)
-		{
-			numberOfJobs = inNumberOfJobs;
-		}
-
 		public string Name
 		{
 			get { throw new NotImplementedException(); }
@@ -53,7 +48,7 @@ namespace Quartz.Examples.Example11
 
 			log.Info("------- Initialization Complete -----------");
 
-			log.Info("------- (Not Scheduling any Jobs - relying on XML definitions --");
+            log.Info("------- Scheduling Jobs -------------------");
 
             Random r = new Random();
 			// schedule 500 jobs to run
@@ -71,7 +66,7 @@ namespace Quartz.Examples.Example11
 
 			    ITrigger trigger = TriggerBuilder.Create()
 			        .WithIdentity("trigger_" + count, "group_1")
-			        .StartAt(DateBuilder.FutureDate((10000 + (count*100)), DateBuilder.IntervalUnit.Millisecond)) // space fire times a small bit
+			        .StartAt(DateBuilder.FutureDate((10000 + (count*100)), IntervalUnit.Millisecond)) // space fire times a small bit
 			        .Build();
 
 				sched.ScheduleJob(job, trigger);

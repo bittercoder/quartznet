@@ -21,10 +21,11 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Globalization;
+using System.Linq;
 using System.Reflection;
 using System.Runtime.Remoting;
+using System.Security;
 using System.Text;
 using System.Threading;
 
@@ -54,40 +55,42 @@ namespace Quartz.Core
     public class QuartzScheduler : MarshalByRefObject, IRemotableQuartzScheduler
     {
         private readonly ILog log;
-        private static readonly FileVersionInfo versionInfo;
+        private static readonly Version version; 
 
         private readonly QuartzSchedulerResources resources;
 
         private readonly QuartzSchedulerThread schedThread;
         private readonly SchedulerContext context = new SchedulerContext();
 
-        private IListenerManager listenerManager = new ListenerManagerImpl();
+        private readonly IListenerManager listenerManager = new ListenerManagerImpl();
 
-        private IDictionary<string, IJobListener> internalJobListeners = new Dictionary<string, IJobListener>(10);
-        private IDictionary<string, ITriggerListener> internalTriggerListeners = new Dictionary<string, ITriggerListener>(10);
-        private IList<ISchedulerListener> internalSchedulerListeners = new List<ISchedulerListener>(10);
+        private readonly IDictionary<string, IJobListener> internalJobListeners = new Dictionary<string, IJobListener>(10);
+        private readonly IDictionary<string, ITriggerListener> internalTriggerListeners = new Dictionary<string, ITriggerListener>(10);
+        private readonly IList<ISchedulerListener> internalSchedulerListeners = new List<ISchedulerListener>(10);
 
-        private IJobFactory jobFactory = new SimpleJobFactory();
+        private IJobFactory jobFactory = new PropertySettingJobFactory();
         private readonly ExecutingJobsManager jobMgr;
         private readonly ErrorLogger errLogger;
         private readonly ISchedulerSignaler signaler;
         private readonly Random random = new Random();
-        private readonly List<object> holdToPreventGC = new List<object>(5);
+        private readonly List<object> holdToPreventGc = new List<object>(5);
         private bool signalOnSchedulingChange = true;
         private volatile bool closed;
         private volatile bool shuttingDown;
         private DateTimeOffset? initialStart;
         private bool boundRemotely;
+        private readonly TimeSpan dbRetryInterval;
 
         /// <summary>
         /// Initializes the <see cref="QuartzScheduler"/> class.
         /// </summary>
         static QuartzScheduler()
         {
-            Assembly asm = Assembly.GetAssembly(typeof (QuartzScheduler));
+            var asm = Assembly.GetAssembly(typeof(QuartzScheduler));
+
             if (asm != null)
             {
-                versionInfo = FileVersionInfo.GetVersionInfo(asm.Location);
+                version = asm.GetName().Version;
             }
         }
 
@@ -97,8 +100,8 @@ namespace Quartz.Core
         /// <value>The version.</value>
         public string Version
         {
-            get { return versionInfo.FileVersion; }
-        }
+            get { return version.ToString(); }
+        } 
 
         /// <summary>
         /// Gets the version major.
@@ -106,8 +109,8 @@ namespace Quartz.Core
         /// <value>The version major.</value>
         public static string VersionMajor
         {
-            get { return versionInfo.FileMajorPart.ToString(CultureInfo.InvariantCulture); }
-        }
+            get { return version.Major.ToString(CultureInfo.InvariantCulture); }
+        } 
 
         /// <summary>
         /// Gets the version minor.
@@ -115,7 +118,7 @@ namespace Quartz.Core
         /// <value>The version minor.</value>
         public static string VersionMinor
         {
-            get { return versionInfo.FileMinorPart.ToString(CultureInfo.InvariantCulture); }
+            get { return version.Minor.ToString(CultureInfo.InvariantCulture); }
         }
 
         /// <summary>
@@ -124,7 +127,7 @@ namespace Quartz.Core
         /// <value>The version iteration.</value>
         public static string VersionIteration
         {
-            get { return versionInfo.FileBuildPart.ToString(CultureInfo.InvariantCulture); }
+            get { return version.Build.ToString(CultureInfo.InvariantCulture); }
         }
 
         /// <summary>
@@ -344,16 +347,14 @@ namespace Quartz.Core
 
             signaler = new SchedulerSignalerImpl(this, schedThread);
 
+            this.dbRetryInterval = dbRetryInterval;
+
             log.InfoFormat(CultureInfo.InvariantCulture, "Quartz Scheduler v.{0} created.", Version);
+        }
 
-
-            log.Info("Scheduler meta-data: " +
-                     (new SchedulerMetaData(SchedulerName,
-                                            SchedulerInstanceId, GetType(), boundRemotely, RunningSince != null,
-                                            InStandbyMode, IsShutdown, RunningSince,
-                                            NumJobsExecuted, JobStoreClass,
-                                            SupportsPersistence, Clustered, ThreadPoolClass,
-                                            ThreadPoolSize, Version)));
+        public TimeSpan DbRetryInterval
+        {
+            get { return dbRetryInterval; }
         }
 
         public void Initialize()
@@ -373,7 +374,7 @@ namespace Quartz.Core
                                             InStandbyMode, IsShutdown, RunningSince,
                                             NumJobsExecuted, JobStoreClass,
                                             SupportsPersistence, Clustered, ThreadPoolClass,
-                                            ThreadPoolSize, Version)).ToString());
+                                            ThreadPoolSize, Version)));
         }
 
         /// <summary>
@@ -406,7 +407,7 @@ namespace Quartz.Core
         /// <param name="obj">The obj.</param>
         public virtual void AddNoGCObject(object obj)
         {
-            holdToPreventGC.Add(obj);
+            holdToPreventGc.Add(obj);
         }
 
         /// <summary>
@@ -416,7 +417,7 @@ namespace Quartz.Core
         /// <returns></returns>
         public virtual bool RemoveNoGCObject(object obj)
         {
-            return holdToPreventGC.Remove(obj);
+            return holdToPreventGc.Remove(obj);
         }
 
         /// <summary>
@@ -433,11 +434,17 @@ namespace Quartz.Core
                 throw new SchedulerException("The Scheduler cannot be restarted after Shutdown() has been called.");
             }
 
+            NotifySchedulerListenersStarting();
+
             if (!initialStart.HasValue)
             {
                 initialStart = SystemTime.UtcNow();
                 resources.JobStore.SchedulerStarted();
                 StartPlugins();
+            }
+            else
+            {
+                resources.JobStore.SchedulerResumed();
             }
 
             schedThread.TogglePause(false);
@@ -504,6 +511,7 @@ namespace Quartz.Core
         /// </summary>
         public virtual void Standby()
         {
+            resources.JobStore.SchedulerPaused();
             schedThread.TogglePause(true);
             log.Info(string.Format(CultureInfo.InvariantCulture, "Scheduler {0} paused.", resources.GetUniqueIdentifier()));
             NotifySchedulerListenersInStandbyMode();
@@ -650,7 +658,7 @@ namespace Quartz.Core
 
             SchedulerRepository.Instance.Remove(resources.Name);
 
-            holdToPreventGC.Clear();
+            holdToPreventGc.Clear();
 
             log.Info(string.Format(CultureInfo.InvariantCulture, "Scheduler {0} Shutdown complete.", resources.GetUniqueIdentifier()));
         }
@@ -728,7 +736,8 @@ namespace Quartz.Core
 
             if (!ft.HasValue)
             {
-                throw new SchedulerException("Based on configured schedule, the given trigger will never fire.");
+                var message = string.Format("Based on configured schedule, the given trigger '{0}' will never fire.", trigger.Key);
+                throw new SchedulerException(message);
             }
 
             resources.JobStore.StoreJobAndTrigger(jobDetail, trig);
@@ -769,7 +778,8 @@ namespace Quartz.Core
 
             if (!ft.HasValue)
             {
-                throw new SchedulerException("Based on configured schedule, the given trigger will never fire.");
+                var message = string.Format("Based on configured schedule, the given trigger '{0}' will never fire.", trigger.Key);
+                throw new SchedulerException(message);
             }
 
             resources.JobStore.StoreTrigger(trig, false);
@@ -840,9 +850,7 @@ namespace Quartz.Core
         {
             ValidateState();
 
-            bool result = false;
-
-            result = resources.JobStore.RemoveJobs(jobKeys);
+            bool result = resources.JobStore.RemoveJobs(jobKeys);
             NotifySchedulerThread(null);
             foreach (JobKey key in jobKeys)
             {
@@ -851,7 +859,7 @@ namespace Quartz.Core
             return result;
         }
 
-        public void ScheduleJobs(IDictionary<IJobDetail, IList<ITrigger>> triggersAndJobs, bool replace)
+        public void ScheduleJobs(IDictionary<IJobDetail, Collection.ISet<ITrigger>> triggersAndJobs, bool replace)
         {
             ValidateState();
 
@@ -862,7 +870,7 @@ namespace Quartz.Core
                 {
                     continue;
                 }
-                IList<ITrigger> triggers = triggersAndJobs[job];
+                Collection.ISet<ITrigger> triggers = triggersAndJobs[job];
                 if (triggers == null) // this is possible because the job may be durable, and not yet be having triggers
                 {
                     continue;
@@ -888,7 +896,8 @@ namespace Quartz.Core
 
                     if (ft == null)
                     {
-                        throw new SchedulerException("Based on configured schedule, the given trigger will never fire.");
+                        var message = string.Format("Based on configured schedule, the given trigger '{0}' will never fire.", trigger.Key);
+                        throw new SchedulerException(message);
                     }
                 }
             }
@@ -901,13 +910,18 @@ namespace Quartz.Core
             }
         }
 
+        public void ScheduleJob(IJobDetail jobDetail, Collection.ISet<ITrigger> triggersForJob, bool replace)
+        {
+            var  triggersAndJobs = new Dictionary<IJobDetail, Collection.ISet<ITrigger>>();
+            triggersAndJobs.Add(jobDetail, triggersForJob);
+            ScheduleJobs(triggersAndJobs, replace);
+        }
+
         public bool UnscheduleJobs(IList<TriggerKey> triggerKeys)
         {
             ValidateState();
 
-            bool result = false;
-
-            result = resources.JobStore.RemoveTriggers(triggerKeys);
+            bool result = resources.JobStore.RemoveTriggers(triggerKeys);
             NotifySchedulerThread(null);
             foreach (TriggerKey key in triggerKeys)
             {
@@ -963,17 +977,15 @@ namespace Quartz.Core
                 throw new ArgumentException("newTrigger cannot be null");
             }
 
-            IOperableTrigger trig = (IOperableTrigger) newTrigger;
+            var trigger = (IOperableTrigger) newTrigger;
             ITrigger oldTrigger = GetTrigger(triggerKey);
             if (oldTrigger == null)
             {
                 return null;
             }
-            else
-            {
-                trig.JobKey = oldTrigger.JobKey;
-            }
-            trig.Validate();
+            
+            trigger.JobKey = oldTrigger.JobKey;
+            trigger.Validate();
 
             ICalendar cal = null;
             if (newTrigger.CalendarName != null)
@@ -981,14 +993,15 @@ namespace Quartz.Core
                 cal = resources.JobStore.RetrieveCalendar(newTrigger.CalendarName);
             }
 
-            DateTimeOffset? ft = trig.ComputeFirstFireTimeUtc(cal);
+            DateTimeOffset? ft = trigger.ComputeFirstFireTimeUtc(cal);
 
             if (!ft.HasValue)
             {
-                throw new SchedulerException("Based on configured schedule, the given trigger will never fire.");
+                var message = string.Format("Based on configured schedule, the given trigger '{0}' will never fire.", trigger.Key);
+                throw new SchedulerException(message);
             }
 
-            if (resources.JobStore.ReplaceTrigger(triggerKey, trig))
+            if (resources.JobStore.ReplaceTrigger(triggerKey, trigger))
             {
                 NotifySchedulerThread(newTrigger.GetNextFireTimeUtc());
                 NotifySchedulerListenersUnscheduled(triggerKey);
@@ -1328,7 +1341,7 @@ namespace Quartz.Core
             IList<IOperableTrigger> triggersForJob = resources.JobStore.GetTriggersForJob(jobKey);
 
             var retValue = new List<ITrigger>(triggersForJob.Count);
-            foreach (IOperableTrigger trigger in triggersForJob)
+            foreach (var trigger in triggersForJob)
             {
                 retValue.Add(trigger);
             }
@@ -1513,7 +1526,7 @@ namespace Quartz.Core
 
         /// <summary>
         /// Get a List containing all of the <see cref="IJobListener" />s
-        /// in the <code>Scheduler</code>'s <i>internal</i> list.
+        /// in the <see cref="IScheduler" />'s <i>internal</i> list.
         /// </summary>
         /// <returns></returns>
         public IList<IJobListener> InternalJobListeners
@@ -1544,8 +1557,8 @@ namespace Quartz.Core
         }
 
         /// <summary>
-        /// Add the given <code>{@link org.quartz.TriggerListener}</code> to the
-        /// <code>Scheduler</code>'s <i>internal</i> list.
+        /// Add the given <see cref="ITriggerListener" /> to the
+        /// <see cref="IScheduler" />'s <i>internal</i> list.
         /// </summary>
         /// <param name="triggerListener"></param>
         public void AddInternalTriggerListener(ITriggerListener triggerListener)
@@ -1627,7 +1640,7 @@ namespace Quartz.Core
         /// <summary>
         /// Notifies the scheduler thread.
         /// </summary>
-        protected internal virtual void NotifySchedulerThread(DateTimeOffset? candidateNewNextFireTimeUtc)
+        protected virtual void NotifySchedulerThread(DateTimeOffset? candidateNewNextFireTimeUtc)
         {
             if (SignalOnSchedulingChange)
             {
@@ -1684,14 +1697,7 @@ namespace Quartz.Core
             {
                 return true;
             }
-            foreach (IMatcher<TriggerKey> matcher in matchers)
-            {
-                if (matcher.IsMatch(key))
-                {
-                    return true;
-                }
-            }
-            return false;
+            return matchers.Any(matcher => matcher.IsMatch(key));
         }
 
         /// <summary>
@@ -2175,7 +2181,7 @@ namespace Quartz.Core
             }
         }
 
-        public void NotifySchedulerListenersStarted()
+        public virtual void NotifySchedulerListenersStarted()
         {
             // notify all scheduler listeners
             foreach (ISchedulerListener listener in BuildSchedulerListenerList())
@@ -2187,6 +2193,25 @@ namespace Quartz.Core
                 catch (Exception e)
                 {
                     log.Error("Error while notifying SchedulerListener of startup.", e);
+                }
+            }
+        }
+
+        public virtual void NotifySchedulerListenersStarting()
+        {
+            // build a list of all scheduler listeners that are to be notified...
+            IList<ISchedulerListener> schedListeners = BuildSchedulerListenerList();
+
+            // notify all scheduler listeners
+            foreach (ISchedulerListener sl in schedListeners)
+            {
+                try
+                {
+                    sl.SchedulerStarting();
+                }
+                catch (Exception e)
+                {
+                    log.Error("Error while notifying SchedulerListener of scheduler starting.", e);
                 }
             }
         }
@@ -2323,10 +2348,7 @@ namespace Quartz.Core
                         ((IInterruptableJob) job).Interrupt();
                         return true;
                     }
-                    else
-                    {
-                        throw new UnableToInterruptJobException("Job " + jec.JobDetail.Key + " can not be interrupted, since it does not implement " + typeof (IInterruptableJob).Name);
-                    }
+                    throw new UnableToInterruptJobException("Job " + jec.JobDetail.Key + " can not be interrupted, since it does not implement " + typeof (IInterruptableJob).Name);
                 }
             }
 
@@ -2362,6 +2384,7 @@ namespace Quartz.Core
         ///<summary>
         ///Obtains a lifetime service object to control the lifetime policy for this instance.
         ///</summary>
+        [SecurityCritical]
         public override object InitializeLifetimeService()
         {
             // overriden to initialize null life time service,
@@ -2421,7 +2444,7 @@ namespace Quartz.Core
             }
         }
 
-        private Dictionary<string, IJobExecutionContext> executingJobs = new Dictionary<string, IJobExecutionContext>();
+        private readonly Dictionary<string, IJobExecutionContext> executingJobs = new Dictionary<string, IJobExecutionContext>();
 
         private int numJobsFired;
 

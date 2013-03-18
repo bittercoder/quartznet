@@ -28,7 +28,7 @@ using Quartz.Impl;
 namespace Quartz.Examples.Example14
 {
     /// <summary>
-    /// This Example will demonstrate how Triggers are ordered by priority.
+    /// This example will demonstrate how Triggers are ordered by priority.
     /// </summary>
     /// <author>Marko Lahma (.NET)</author>
     public class PriorityExample : IExample
@@ -72,17 +72,17 @@ namespace Quartz.Examples.Example14
             // We should see the following firing order:
             // 1. Priority10Trigger15SecondRepeat
             // 2. Priority5Trigger10SecondRepeat
-            // 3. PriorityNeg5Trigger5SecondRepeat
-            // 4. PriorityNeg5Trigger5SecondRepeat
+            // 3. Priority1Trigger5SecondRepeat
+            // 4. Priority1Trigger5SecondRepeat
             // 5. Priority5Trigger10SecondRepeat
             // 6. Priority10Trigger15SecondRepeat
 
             // Calculate the start time of all triggers as 5 seconds from now
-            DateTimeOffset startTime = DateBuilder.FutureDate(5, DateBuilder.IntervalUnit.Second);
+            DateTimeOffset startTime = DateBuilder.FutureDate(5, IntervalUnit.Second);
 
             // First trigger has priority of 1, and will repeat after 5 seconds
             ITrigger trigger1 = TriggerBuilder.Create()
-                .WithIdentity("PriorityNeg5Trigger5SecondRepeat")
+                .WithIdentity("Priority1Trigger5SecondRepeat")
                 .StartAt(startTime)
                 .WithSimpleSchedule(x => x.WithRepeatCount(1).WithIntervalInSeconds(5))
                 .WithPriority(1)

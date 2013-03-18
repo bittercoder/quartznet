@@ -20,10 +20,6 @@
 using System;
 using System.Data;
 
-using Common.Logging;
-
-using Quartz.Spi;
-
 namespace Quartz.Impl.AdoJobStore
 {
     /// <summary>
@@ -32,57 +28,18 @@ namespace Quartz.Impl.AdoJobStore
     /// <author>Marko Lahma</author>
     public class SqlServerDelegate : StdAdoDelegate
     {
-        private string sqlSelectNextTriggerToAcquire;
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="SqlServerDelegate"/> class.
-        /// </summary>
-        /// <param name="logger">the logger to use during execution</param>
-        /// <param name="tablePrefix">the prefix of all table names</param>
-        /// <param name="schedName">the scheduler name</param>
-        /// <param name="instanceId">The instance id.</param>
-        /// <param name="dbProvider">The db provider.</param>
-        /// <param name="typeLoadHelper">the type loader helper</param>
-        public SqlServerDelegate(ILog logger, string tablePrefix, string schedName, string instanceId, IDbProvider dbProvider, ITypeLoadHelper typeLoadHelper)
-            : base(logger, tablePrefix, schedName, instanceId, dbProvider, typeLoadHelper)
-        {
-            CreateSqlForSelectNextTriggerToAcquire();
-        }
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="SqlServerDelegate"/> class.
-        /// </summary>
-        /// <param name="logger">The logger.</param>
-        /// <param name="tablePrefix">The table prefix.</param>
-        /// <param name="schedName">the scheduler name</param>
-        /// <param name="instanceId">The instance id.</param>
-        /// <param name="dbProvider">The db provider.</param>
-        /// <param name="typeLoadHelper">the type loader helper</param>
-        /// <param name="useProperties">if set to <c>true</c> [use properties].</param>
-        public SqlServerDelegate(ILog logger, string tablePrefix, string schedName, string instanceId, IDbProvider dbProvider, ITypeLoadHelper typeLoadHelper, bool useProperties)
-            : base(logger, tablePrefix, schedName, instanceId, dbProvider, typeLoadHelper, useProperties)
-        {
-            CreateSqlForSelectNextTriggerToAcquire();
-        }
-
-        /// <summary>
-        /// Creates the SQL for select next trigger to acquire.
-        /// </summary>
-        private void CreateSqlForSelectNextTriggerToAcquire()
-        {
-            sqlSelectNextTriggerToAcquire = SqlSelectNextTriggerToAcquire;
-
-            // add limit clause to correct place
-            sqlSelectNextTriggerToAcquire = "SELECT TOP " + TriggersToAcquireLimit + " " + sqlSelectNextTriggerToAcquire.Substring(6);
-        }
-
         /// <summary>
         /// Gets the select next trigger to acquire SQL clause.
         /// SQL Server specific version with TOP functionality
         /// </summary>
         /// <returns></returns>
-        protected override string GetSelectNextTriggerToAcquireSql()
+        protected override string GetSelectNextTriggerToAcquireSql(int maxCount)
         {
+            string sqlSelectNextTriggerToAcquire = SqlSelectNextTriggerToAcquire;
+
+            // add limit clause to correct place
+            sqlSelectNextTriggerToAcquire = "SELECT TOP " + maxCount + " " + sqlSelectNextTriggerToAcquire.Substring(6);
+
             return sqlSelectNextTriggerToAcquire;
         }
 

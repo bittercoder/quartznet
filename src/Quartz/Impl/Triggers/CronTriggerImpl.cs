@@ -20,6 +20,7 @@
 using System;
 
 using Quartz.Spi;
+using Quartz.Util;
 
 namespace Quartz.Impl.Triggers
 {
@@ -174,7 +175,7 @@ namespace Quartz.Impl.Triggers
     [Serializable]
     public class CronTriggerImpl : AbstractTrigger, ICronTrigger
 	{
-        protected internal const int YearToGiveupSchedulingAt = 2299;
+        protected const int YearToGiveupSchedulingAt = 2299;
 		private CronExpression cronEx;
         private DateTimeOffset startTimeUtc = DateTimeOffset.MinValue;
         private DateTimeOffset? endTimeUtc;
@@ -292,7 +293,7 @@ namespace Quartz.Impl.Triggers
         /// <param name="jobGroup">Group of the <see cref="IJobDetail" /> executed on firetime</param>
         /// <param name="cronExpression"> A cron expression dictating the firing sequence of the <see cref="ITrigger" /></param>
         /// <param name="timeZone">
-        /// Specifies for which time zone the <code>cronExpression</code> should be interpreted, 
+        /// Specifies for which time zone the cronExpression should be interpreted, 
         /// i.e. the expression 0 0 10 * * ?, is resolved to 10:00 am in this time zone.
         /// </param>
 		public CronTriggerImpl(string name, string group, string jobName,
@@ -338,20 +339,19 @@ namespace Quartz.Impl.Triggers
             TimeZone = TimeZoneInfo.Local;
         }
 
-
-		/// <summary>
-		/// Create a <see cref="CronTriggerImpl" /> with fire time dictated by the
-		/// <param name="cronExpression" /> resolved with respect to the specified
-        /// <param name="timeZone" /> occurring from the <see cref="startTimeUtc" /> until
-		/// the given <paran name="endTimeUtc" />.
-		/// </summary>
-        /// <param name="name">The name of the <see cref="ITrigger" /></param>
-        /// <param name="group">The group of the <see cref="ITrigger" /></param>
-        /// <param name="jobName">name of the <see cref="IJobDetail" /> executed on firetime</param>
-		/// <param name="jobGroup">Group of the <see cref="IJobDetail" /> executed on firetime</param>
-        /// <param name="startTimeUtc">A <see cref="DateTimeOffset" /> set to the earliest time for the  <see cref="ITrigger" /> to start firing.</param>
-        /// <param name="endTime">A <see cref="DateTimeOffset" /> set to the time for the <see cref="ITrigger" /> to quit repeat firing.</param>
-        public CronTriggerImpl(string name, string group, string jobName,
+	    /// <summary>
+	    /// Create a <see cref="CronTriggerImpl" /> with fire time dictated by the
+	    /// <param name="cronExpression" /> resolved with respect to the specified
+	    /// <param name="timeZone" /> occurring from the <see cref="startTimeUtc" /> until
+	    /// the given <paran name="endTimeUtc" />.
+	    /// </summary>
+	    /// <param name="name">The name of the <see cref="ITrigger" /></param>
+	    /// <param name="group">The group of the <see cref="ITrigger" /></param>
+	    /// <param name="jobName">name of the <see cref="IJobDetail" /> executed on firetime</param>
+	    /// <param name="jobGroup">Group of the <see cref="IJobDetail" /> executed on firetime</param>
+	    /// <param name="startTimeUtc">A <see cref="DateTimeOffset" /> set to the earliest time for the  <see cref="ITrigger" /> to start firing.</param>
+	    /// <param name="endTime">A <see cref="DateTimeOffset" /> set to the time for the <see cref="ITrigger" /> to quit repeat firing.</param>
+	    public CronTriggerImpl(string name, string group, string jobName,
             string jobGroup, DateTimeOffset startTimeUtc, 
             DateTimeOffset? endTime,
 			string cronExpression, 
@@ -766,7 +766,7 @@ namespace Quartz.Impl.Triggers
                 return false;
             }
 
-            DateTimeOffset p = TimeZoneInfo.ConvertTime(fta.Value, TimeZone);
+            DateTimeOffset p = TimeZoneUtil.ConvertTime(fta.Value, TimeZone);
 
 			if (dayOnly)
 			{

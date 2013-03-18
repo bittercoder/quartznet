@@ -91,6 +91,7 @@ namespace Quartz.Examples.Example13
             properties["quartz.jobStore.clustered"] = "true";
             // if running SQLite we need this
             // properties["quartz.jobStore.lockHandler.type"] = "Quartz.Impl.AdoJobStore.UpdateLockRowSemaphore, Quartz";
+            properties["quartz.jobStore.driverDelegateType"] = "Quartz.Impl.AdoJobStore.SqlServerDelegate, Quartz";
 
             properties["quartz.dataSource.default.connectionString"] = "Server=(local);Database=quartz;Trusted_Connection=True;";
             properties["quartz.dataSource.default.provider"] = "SqlServer-20";
@@ -124,7 +125,7 @@ namespace Quartz.Examples.Example13
 
                 ISimpleTrigger trigger = (ISimpleTrigger) TriggerBuilder.Create()
                                                               .WithIdentity("triger_" + count, schedId)
-                                                              .StartAt(DateBuilder.FutureDate(1, DateBuilder.IntervalUnit.Second))
+                                                              .StartAt(DateBuilder.FutureDate(1, IntervalUnit.Second))
                                                               .WithSimpleSchedule(x => x.WithRepeatCount(20).WithInterval(TimeSpan.FromSeconds(5)))
                                                               .Build();
 
@@ -140,7 +141,7 @@ namespace Quartz.Examples.Example13
 
                 trigger = (ISimpleTrigger) TriggerBuilder.Create()
                                                .WithIdentity("triger_" + count, schedId)
-                                               .StartAt(DateBuilder.FutureDate(2, DateBuilder.IntervalUnit.Second))
+                                               .StartAt(DateBuilder.FutureDate(2, IntervalUnit.Second))
                                                .WithSimpleSchedule(x => x.WithRepeatCount(20).WithInterval(TimeSpan.FromSeconds(5)))
                                                .Build();
 
@@ -157,7 +158,7 @@ namespace Quartz.Examples.Example13
 
                 trigger = (ISimpleTrigger) TriggerBuilder.Create()
                                                .WithIdentity("triger_" + count, schedId)
-                                               .StartAt(DateBuilder.FutureDate(1, DateBuilder.IntervalUnit.Second))
+                                               .StartAt(DateBuilder.FutureDate(1, IntervalUnit.Second))
                                                .WithSimpleSchedule(x => x.WithRepeatCount(20).WithInterval(TimeSpan.FromSeconds(3)))
                                                .Build();
 
@@ -173,7 +174,7 @@ namespace Quartz.Examples.Example13
 
                 trigger = (ISimpleTrigger) TriggerBuilder.Create()
                                                .WithIdentity("triger_" + count, schedId)
-                                               .StartAt(DateBuilder.FutureDate(1, DateBuilder.IntervalUnit.Second))
+                                               .StartAt(DateBuilder.FutureDate(1, IntervalUnit.Second))
                                                .WithSimpleSchedule(x => x.WithRepeatCount(20).WithInterval(TimeSpan.FromSeconds(4)))
                                                .Build();
 
@@ -190,7 +191,7 @@ namespace Quartz.Examples.Example13
 
                 trigger = (ISimpleTrigger) TriggerBuilder.Create()
                                                .WithIdentity("triger_" + count, schedId)
-                                               .StartAt(DateBuilder.FutureDate(1, DateBuilder.IntervalUnit.Second))
+                                               .StartAt(DateBuilder.FutureDate(1, IntervalUnit.Second))
                                                .WithSimpleSchedule(x => x.WithRepeatCount(20).WithInterval(TimeSpan.FromMilliseconds(4500)))
                                                .Build();
 

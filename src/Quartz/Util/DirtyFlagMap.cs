@@ -20,6 +20,8 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Runtime.Serialization;
+using System.Security;
 
 namespace Quartz.Util
 {
@@ -30,10 +32,9 @@ namespace Quartz.Util
     /// <author>James House</author>
     /// <author>Marko Lahma (.NET)</author>
     [Serializable]
-    public class DirtyFlagMap<TKey, TValue> : IDictionary<TKey, TValue>, IDictionary, ICloneable
+    public class DirtyFlagMap<TKey, TValue> : IDictionary<TKey, TValue>, IDictionary, ICloneable, ISerializable
     {
         private bool dirty;
-        [NonSerialized] private bool locked = false;
         private Dictionary<TKey, TValue> map;
         private readonly object syncRoot = new object();
 
@@ -52,6 +53,79 @@ namespace Quartz.Util
         public DirtyFlagMap(int initialCapacity)
         {
             map = new Dictionary<TKey, TValue>(initialCapacity);
+        }
+
+        /// <summary>
+        /// Serialization constructor.
+        /// </summary>
+        /// <param name="info"></param>
+        /// <param name="context"></param>
+        protected DirtyFlagMap(SerializationInfo info, StreamingContext context)
+        {
+            int version;
+            try
+            {
+                version = info.GetInt32("version");
+            }
+            catch
+            {
+                version = 0;
+            }
+
+
+            string prefix = "";
+            if (version < 1)
+            {
+                try
+                {
+                    info.GetValue("dirty", typeof(bool));
+                }
+                catch
+                {
+                    // base class qualified format
+                    prefix = "DirtyFlagMap+";
+                }
+            }
+
+            switch (version)
+            {
+                case 0:
+                    object o = info.GetValue(prefix + "map", typeof (object));
+                    Hashtable oldMap = o as Hashtable;
+                    if (oldMap != null)
+                    {
+                        // need to call ondeserialization to get hashtable
+                        // initialized correctly
+                        oldMap.OnDeserialization(this);
+
+                        map = new Dictionary<TKey, TValue>();
+                        foreach (DictionaryEntry entry in oldMap)
+                        {
+                            map.Add((TKey) entry.Key, (TValue) entry.Value);
+                        }
+                    }
+                    else
+                    {
+                        // new version
+                        map = (Dictionary<TKey, TValue>) o;
+                    }
+                    break;
+                case 1:
+                    dirty = (bool) info.GetValue("dirty", typeof (bool));
+                    map = (Dictionary<TKey, TValue>) info.GetValue("map", typeof (Dictionary<TKey, TValue>));
+                    break;
+                default:
+                    throw new NotSupportedException("Unknown serialization version");
+            }
+
+        }
+
+        [SecurityCritical]
+        public virtual void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            info.AddValue("version", 1);
+            info.AddValue("dirty", dirty);
+            info.AddValue("map", map);
         }
 
         /// <summary>
@@ -113,9 +187,17 @@ namespace Quartz.Util
         }
 
         /// <summary>
+        /// Gets the value behind the specified key.
+        /// </summary>
+        /// <param name="key">The key.</param>
+        public virtual TValue Get(TKey key)
+        {
+            return this[key];
+        }
+
+        /// <summary>
         /// Gets or sets the <see cref="Object"/> with the specified key.
         /// </summary>
-        /// <value></value>
         public virtual TValue this[TKey key]
         {
             get 
@@ -219,7 +301,7 @@ namespace Quartz.Util
 
         public void CopyTo(KeyValuePair<TKey, TValue>[] array, int arrayIndex)
         {
-            throw new NotImplementedException();
+            ((ICollection<KeyValuePair<TKey, TValue>>) map).CopyTo(array, arrayIndex);
         }
 
         /// <summary>
@@ -311,14 +393,10 @@ namespace Quartz.Util
         {
             TKey[] keys = new TKey[Count];
             TValue[] values = new TValue[Count];
-            if (Keys != null)
-            {
-                Keys.CopyTo(keys, index);
-            }
-            if (Values != null)
-            {
-                Values.CopyTo(values, index);
-            }
+            
+            Keys.CopyTo(keys, index);
+            Values.CopyTo(values, index);
+            
             for (int i = index; i < Count; i++)
             {
                 if (!Equals(keys[i], default(TKey)) || !Equals(values[i], default(TValue)))
@@ -344,7 +422,7 @@ namespace Quartz.Util
         /// <value></value>
         public virtual bool IsReadOnly
         {
-            get { return locked; }
+            get { return false; }
         }
 
         /// <summary>
@@ -462,7 +540,7 @@ namespace Quartz.Util
         /// </returns>
         public override int GetHashCode()
         {
-            return map.GetHashCode() ^ locked.GetHashCode() ^ dirty.GetHashCode();
+            return map.GetHashCode() ^ dirty.GetHashCode();
         }
 
         IEnumerator IEnumerable.GetEnumerator()

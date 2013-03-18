@@ -1,5 +1,10 @@
+using System;
+using System.IO;
 using System.Collections.Generic;
 using System.Collections.Specialized;
+using System.Diagnostics;
+using System.Threading;
+using System.Runtime.Serialization.Formatters.Binary;
 
 using NUnit.Framework;
 
@@ -125,7 +130,7 @@ namespace Quartz.Tests.Unit
             IList<string> triggerGroups = sched.GetTriggerGroupNames();
 
             Assert.AreEqual(2, jobGroups.Count, "Job group list size expected to be = 2 ");
-            Assert.AreEqual(2,triggerGroups.Count, "Trigger group list size expected to be = 2 ");
+            Assert.AreEqual(2, triggerGroups.Count, "Trigger group list size expected to be = 2 ");
 
             Collection.ISet<JobKey> jobKeys = sched.GetJobKeys(GroupMatcher<JobKey>.GroupEquals(JobKey.DefaultGroup));
             Collection.ISet<TriggerKey> triggerKeys = sched.GetTriggerKeys(GroupMatcher<TriggerKey>.GroupEquals(TriggerKey.DefaultGroup));
@@ -172,7 +177,7 @@ namespace Quartz.Tests.Unit
             sched.ScheduleJob(job, trigger);
 
             pausedGroups = sched.GetPausedTriggerGroups();
-            Assert.AreEqual(1,pausedGroups.Count, "Size of paused trigger groups list expected to be 1 ");
+            Assert.AreEqual(1, pausedGroups.Count, "Size of paused trigger groups list expected to be 1 ");
 
             s = sched.GetTriggerState(new TriggerKey("t2", "g1"));
             Assert.AreEqual(TriggerState.Paused, s, "State of trigger t2 expected to be PAUSED ");
@@ -181,13 +186,13 @@ namespace Quartz.Tests.Unit
             Assert.AreEqual(TriggerState.Paused, s, "State of trigger t4 expected to be PAUSED");
 
             sched.ResumeTriggers(GroupMatcher<TriggerKey>.GroupEquals("g1"));
-            
+
             s = sched.GetTriggerState(new TriggerKey("t2", "g1"));
             Assert.AreEqual(TriggerState.Normal, s, "State of trigger t2 expected to be NORMAL ");
-            
+
             s = sched.GetTriggerState(new TriggerKey("t4", "g1"));
             Assert.AreEqual(TriggerState.Normal, s, "State of trigger t2 expected to be NORMAL ");
-            
+
             pausedGroups = sched.GetPausedTriggerGroups();
             Assert.AreEqual(0, pausedGroups.Count, "Size of paused trigger groups list expected to be 0 ");
 
@@ -212,5 +217,59 @@ namespace Quartz.Tests.Unit
 
             sched.Shutdown();
         }
-    }
+
+        [Test]
+        public void TestShutdownWithSleepReturnsAfterAllThreadsAreStopped()
+        {
+            int activeThreads = Process.GetCurrentProcess().Threads.Count;
+            int threadPoolSize = 5;
+            NameValueCollection properties = new NameValueCollection();
+            properties["quartz.threadPool.threadCount"] = threadPoolSize.ToString();
+            ISchedulerFactory factory = new StdSchedulerFactory(properties);
+            IScheduler scheduler = factory.GetScheduler();
+            scheduler.Start();
+
+            Thread.Sleep(500);
+
+            scheduler.Shutdown(true);
+
+            Assert.True(Process.GetCurrentProcess().Threads.Count <= activeThreads);
+        }
+		
+		[Test]	
+        public void SerializationExceptionTest()
+        {
+            SchedulerException before;
+            SchedulerException after;
+
+            try
+            {
+                try
+                {
+                    throw new Exception("INNER");
+                }
+                catch (Exception ex)
+                {
+                    throw new SchedulerException("OUTER", ex);
+                }
+            }
+            catch (SchedulerException ex)
+            {
+                before = ex;
+            }
+
+            using (var stream = new MemoryStream())
+            {
+                var formatter = new BinaryFormatter();
+                formatter.Serialize(stream, before);
+                stream.Seek(0, SeekOrigin.Begin);
+                after = (SchedulerException)formatter.Deserialize(stream);
+            }
+
+
+            Assert.NotNull(before.InnerException);
+            Assert.NotNull(after.InnerException);
+            Assert.AreEqual(before.ToString(), after.ToString());
+        }		
+	}		
 }

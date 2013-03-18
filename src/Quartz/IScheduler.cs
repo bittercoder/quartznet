@@ -187,10 +187,10 @@ namespace Quartz
         IJobFactory JobFactory { set; }
 
         /// <summary>
-        /// Get a reference to the scheduler's <code>ListenerManager</code>,
+        /// Get a reference to the scheduler's <see cref="IListenerManager" />,
         /// through which listeners may be registered.
         /// </summary>
-        /// <returns>the scheduler's <code>ListenerManager</code></returns>
+        /// <returns>the scheduler's <see cref="IListenerManager" /></returns>
         /// <seealso cref="ListenerManager" />
         /// <seealso cref="IJobListener" />
         /// <seealso cref="ITriggerListener" />
@@ -322,9 +322,21 @@ namespace Quartz
         /// specifically, if the keys are not unique) and the replace
         /// parameter is not set to true then an exception will be thrown.</para>
         /// </remarks>
-        void ScheduleJobs(IDictionary<IJobDetail, IList<ITrigger>> triggersAndJobs, bool replace);
-
-
+        void ScheduleJobs(IDictionary<IJobDetail, Collection.ISet<ITrigger>> triggersAndJobs, bool replace);
+        
+        /// <summary>
+        /// Schedule the given job with the related set of triggers.
+        /// </summary>
+        /// <remarks>
+        /// If any of the given job or triggers already exist (or more
+        /// specifically, if the keys are not unique) and the replace 
+        /// parameter is not set to true then an exception will be thrown.
+        /// </remarks>
+        /// <param name="jobDetail"></param>
+        /// <param name="triggersForJob"></param>
+        /// <param name="replace"></param>
+        void ScheduleJob(IJobDetail jobDetail, Collection.ISet<ITrigger> triggersForJob, bool replace);
+    
         /// <summary>
         /// Remove the indicated <see cref="ITrigger" /> from the scheduler.
         /// <para>If the related job does not have any other triggers, and the job is
@@ -333,13 +345,13 @@ namespace Quartz
         bool UnscheduleJob(TriggerKey triggerKey);
 
         /// <summary>
-        /// Remove all of the indicated <code><see cref="ITrigger" /></code>s from the scheduler.
+        /// Remove all of the indicated <see cref="ITrigger" />s from the scheduler.
         /// </summary>
         /// <remarks>
         /// <para>If the related job does not have any other triggers, and the job is
         /// not durable, then the job will also be deleted.</para>
         /// Note that while this bulk operation is likely more efficient than
-        /// invoking <code>unscheduleJob(TriggerKey triggerKey)</code> several
+        /// invoking <see cref="UnscheduleJob(TriggerKey)" /> several
         /// times, it may have the adverse affect of holding data locks for a
         /// single long duration of time (rather than lots of small durations
         /// of time).
@@ -385,12 +397,12 @@ namespace Quartz
 
 
         /// <summary>
-        /// Delete the identified <code>Job</code>s from the Scheduler - and any
-        /// associated <code>Trigger</code>s.
+        /// Delete the identified jobs from the Scheduler - and any
+        /// associated <see cref="ITrigger" />s.
         /// </summary>
         /// <remarks>
         /// <para>Note that while this bulk operation is likely more efficient than
-        /// invoking <code>deleteJob(JobKey jobKey)</code> several
+        /// invoking <see cref="DeleteJob(JobKey)" /> several
         /// times, it may have the adverse affect of holding data locks for a
         /// single long duration of time (rather than lots of small durations
         /// of time).</para>
@@ -430,8 +442,22 @@ namespace Quartz
         /// matching groups - by pausing all of their <see cref="ITrigger" />s.
         /// </summary>
         /// <remarks>
+        /// <para>
         /// The Scheduler will "remember" that the groups are paused, and impose the
         /// pause on any new jobs that are added to any of those groups until it is resumed.
+        /// </para>
+        /// <para>NOTE: There is a limitation that only exactly matched groups
+        /// can be remembered as paused.  For example, if there are pre-existing
+        /// job in groups "aaa" and "bbb" and a matcher is given to pause
+        /// groups that start with "a" then the group "aaa" will be remembered
+        /// as paused and any subsequently added jobs in group "aaa" will be paused,
+        /// however if a job is added to group "axx" it will not be paused,
+        /// as "axx" wasn't known at the time the "group starts with a" matcher 
+        /// was applied.  HOWEVER, if there are pre-existing groups "aaa" and
+        /// "bbb" and a matcher is given to pause the group "axx" (with a
+        /// group equals matcher) then no jobs will be paused, but it will be 
+        /// remembered that group "axx" is paused and later when a job is added 
+        /// in that group, it will become paused.</para>
         /// </remarks>
         /// <seealso cref="ResumeJobs" />
         void PauseJobs(GroupMatcher<JobKey> matcher);
@@ -445,8 +471,22 @@ namespace Quartz
         /// Pause all of the <see cref="ITrigger" />s in the groups matching.
         /// </summary>
         /// <remarks>
+        /// <para>
         /// The Scheduler will "remember" all the groups paused, and impose the
         /// pause on any new triggers that are added to any of those groups until it is resumed.
+        /// </para>
+        /// <para>NOTE: There is a limitation that only exactly matched groups
+        /// can be remembered as paused.  For example, if there are pre-existing
+        /// triggers in groups "aaa" and "bbb" and a matcher is given to pause
+        /// groups that start with "a" then the group "aaa" will be remembered as
+        /// paused and any subsequently added triggers in that group be paused,
+        /// however if a trigger is added to group "axx" it will not be paused,
+        /// as "axx" wasn't known at the time the "group starts with a" matcher 
+        /// was applied.  HOWEVER, if there are pre-existing groups "aaa" and
+        /// "bbb" and a matcher is given to pause the group "axx" (with a
+        /// group equals matcher) then no triggers will be paused, but it will be 
+        /// remembered that group "axx" is paused and later when a trigger is added
+        /// in that group, it will become paused.</para>
         /// </remarks>
         /// <seealso cref="ResumeTriggers" />
         void PauseTriggers(GroupMatcher<TriggerKey> matcher);
@@ -532,7 +572,7 @@ namespace Quartz
         /// <remarks>
         /// The returned Trigger objects will be snap-shots of the actual stored
         /// triggers.  If you wish to modify a trigger, you must re-store the
-        /// trigger afterward (e.g. see {@link #rescheduleJob(TriggerKey, Trigger)}).
+        /// trigger afterward (e.g. see <see cref="RescheduleJob(TriggerKey, ITrigger)" />).
         /// </remarks>
         IList<ITrigger> GetTriggersOfJob(JobKey jobKey);
 
@@ -549,7 +589,7 @@ namespace Quartz
         /// <remarks>
         /// The returned JobDetail object will be a snap-shot of the actual stored
         /// JobDetail.  If you wish to modify the JobDetail, you must re-store the
-        /// JobDetail afterward (e.g. see {@link #addJob(JobDetail, boolean)}).
+        /// JobDetail afterward (e.g. see <see cref="AddJob(IJobDetail, bool)" />).
         /// </remarks>
         IJobDetail GetJobDetail(JobKey jobKey);
 
@@ -559,7 +599,7 @@ namespace Quartz
         /// <remarks>
         /// The returned Trigger object will be a snap-shot of the actual stored
         /// trigger.  If you wish to modify the trigger, you must re-store the
-        /// trigger afterward (e.g. see {@link #rescheduleJob(TriggerKey, Trigger)}).
+        /// trigger afterward (e.g. see <see cref="RescheduleJob(TriggerKey, ITrigger)" />).
         /// </remarks>
         ITrigger GetTrigger(TriggerKey triggerKey);
 
@@ -588,10 +628,13 @@ namespace Quartz
         /// <summary>
         /// Delete the identified <see cref="ICalendar" /> from the Scheduler.
         /// </summary>
+        /// <remarks>
+        /// If removal of the <code>Calendar</code> would result in
+        /// <see cref="ITrigger" />s pointing to non-existent calendars, then a
+        /// <see cref="SchedulerException" /> will be thrown.
+        /// </remarks>
         /// <param name="calName">Name of the calendar.</param>
-        /// <returns>
-        /// true if the Calendar was found and deleted.
-        /// </returns>
+        /// <returns>true if the Calendar was found and deleted.</returns>
         bool DeleteCalendar(string calName);
 
         /// <summary>
@@ -641,8 +684,8 @@ namespace Quartz
 
         /// <summary>
         /// Request the interruption, within this Scheduler instance, of the 
-        /// identified executing <code>Job</code> instance, which 
-        /// must be an implementor of the <code>InterruptableJob</code> interface.
+        /// identified executing job instance, which 
+        /// must be an implementor of the <see cref="IInterruptableJob" /> interface.
         /// </summary>
         /// <remarks>
         /// This method is not cluster aware.  That is, it will only interrupt 
@@ -656,6 +699,7 @@ namespace Quartz
         /// <param nane="fireInstanceId">
         /// the unique identifier of the job instance to  be interrupted (see <see cref="IJobExecutionContext.FireInstanceId" />
         /// </param>
+        /// <param name="fireInstanceId"> </param>
         /// <returns>true if the identified job instance was found and interrupted.</returns>
         bool Interrupt(string fireInstanceId);
 

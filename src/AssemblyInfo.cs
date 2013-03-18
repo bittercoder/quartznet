@@ -1,6 +1,5 @@
 using System;
 using System.Reflection;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 #if NET_40
@@ -18,21 +17,21 @@ using System.Runtime.InteropServices;
 #endif
 
 #if NET_40
-[assembly: AssemblyProduct("Quarz.NET 2.0 for .NET 4.0")]
+[assembly: AssemblyProduct("Quarz.NET 2.1 for .NET 4.0")]
 #else
-[assembly: AssemblyProduct("Quarz.NET 2.0 for .NET 3.5 SP1")]
+[assembly: AssemblyProduct("Quarz.NET 2.1 for .NET 3.5 SP1")]
 #endif
 [assembly: AssemblyDescription("Quartz Scheduling Framework for .NET")]
-[assembly: AssemblyCompany("http://quartznet.sourceforge.net/")]
-[assembly: AssemblyCopyright("Copyright 2001-2010 Terracotta Inc. and partially Marko Lahma")]
+[assembly: AssemblyCompany("http://www.quartz-scheduler.net/")]
+[assembly: AssemblyCopyright("Copyright 2001-2012 Terracotta Inc. and partially Marko Lahma")]
 [assembly: AssemblyTrademark("Apache License, Version 2.0")]
 [assembly: AssemblyCulture("")]
 [assembly: CLSCompliant(true)]
 [assembly: ComVisible(false)]
 
-[assembly: AssemblyVersion("2.0.0.100")]
+[assembly: AssemblyVersion("2.1.0.400")]
 
-#if STRONG
 [assembly: AssemblyDelaySign(false)]
+#if !NET_40
 [assembly: System.Security.AllowPartiallyTrustedCallers]
 #endif

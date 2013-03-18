@@ -24,7 +24,7 @@ using System;
 namespace Quartz
 {
     /// <summary>
-    /// Conveys the detail properties of a given <code>Job</code> instance. 
+    /// Conveys the detail properties of a given job instance. 
     /// JobDetails are to be created/defined with <see cref="JobBuilder" />.
     /// </summary>
     /// <remarks>
@@ -92,7 +92,7 @@ namespace Quartz
         /// Whether the associated Job class carries the <see cref="DisallowConcurrentExecutionAttribute" />.
         /// </summary>
         /// <seealso cref="DisallowConcurrentExecutionAttribute"/>
-        bool ConcurrentExectionDisallowed { get; }
+        bool ConcurrentExecutionDisallowed { get; }
 
         /// <summary>
         /// Set whether or not the the <see cref="IScheduler" /> should re-Execute

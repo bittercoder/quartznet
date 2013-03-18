@@ -29,7 +29,7 @@ using Quartz.Util;
 namespace Quartz.Impl.AdoJobStore.Common
 {
     /// <summary>
-    ///     
+    /// Concrete implementation of <see cref="IDbProvider" />.
     /// </summary>
     /// <author>Marko Lahma</author>
     public class DbProvider : IDbProvider
@@ -40,18 +40,49 @@ namespace Quartz.Impl.AdoJobStore.Common
         private string connectionString;
         private readonly DbMetadata dbMetadata;
 
-        protected static readonly Dictionary<string, DbMetadata> dbMetadataLookup = new Dictionary<string, DbMetadata>();
-        protected static readonly DbMetadata notInitializedMetadata = new DbMetadata();
+        private static readonly Dictionary<string, DbMetadata> dbMetadataLookup = new Dictionary<string, DbMetadata>();
+        private static readonly DbMetadata notInitializedMetadata = new DbMetadata();
 
+        /// <summary>
+        /// Parse metadata once in static constructor.
+        /// </summary>
         static DbProvider()
         {
             // parse metadata
             PropertiesParser pp = PropertiesParser.ReadFromEmbeddedAssemblyResource(DbProviderResourceName);
-            string[] providers = pp.GetPropertyGroups(PropertyDbProvider);
+            IList<string> providers = pp.GetPropertyGroups(PropertyDbProvider);
             foreach (string providerName in providers)
             {
                 dbMetadataLookup[providerName] = notInitializedMetadata;
             }
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="DbProvider"/> class.
+        /// </summary>
+        /// <param name="dbProviderName">Name of the db provider.</param>
+        /// <param name="connectionString">The connection string.</param>
+        public DbProvider(string dbProviderName, string connectionString)
+        {
+            List<string> deprecatedProviders = new List<string> { "Npgsql-10", "SqlServer-11" };
+
+            if (deprecatedProviders.Contains(dbProviderName))
+            {
+                throw new InvalidConfigurationException(dbProviderName + " provider is no longer supported.");
+            }
+
+            this.connectionString = connectionString;
+            dbMetadata = GetDbMetadata(dbProviderName);
+
+            if (dbMetadata == null)
+            {
+                throw new ArgumentException(string.Format(CultureInfo.InvariantCulture, "Invalid DB provider name: {0}{1}{2}", dbProviderName, Environment.NewLine, GenerateValidProviderNamesInfo()));
+            }
+        }
+
+        public void Initialize()
+        {
+            // do nothing, initialized in static constructor
         }
 
         ///<summary>
@@ -91,29 +122,6 @@ namespace Quartz.Impl.AdoJobStore.Common
             }
             
             return data;
-        }
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="DbProvider"/> class.
-        /// </summary>
-        /// <param name="dbProviderName">Name of the db provider.</param>
-        /// <param name="connectionString">The connection string.</param>
-        public DbProvider(string dbProviderName, string connectionString)
-        {
-            List<string> deprecatedProviders = new List<string> { "Npgsql-10", "SqlServer-11" };
-
-            if (deprecatedProviders.Contains(dbProviderName))
-            {
-                throw new InvalidConfigurationException(dbProviderName + " provider is no longer supported.");
-            }
-
-            this.connectionString = connectionString;
-            dbMetadata = GetDbMetadata(dbProviderName);
-
-            if (dbMetadata == null)
-            {
-                throw new ArgumentException(string.Format(CultureInfo.InvariantCulture, "Invalid DB provider name: {0}{1}{2}", dbProviderName, Environment.NewLine, GenerateValidProviderNamesInfo()));
-            }
         }
 
         protected static string GenerateValidProviderNamesInfo()
@@ -195,5 +203,7 @@ namespace Quartz.Impl.AdoJobStore.Common
         {
 
         }
+
+
     }
 }

@@ -45,7 +45,11 @@ namespace Quartz.Impl.AdoJobStore
     /// <author>Marko Lahma (.NET)</author>
 	public interface IDriverDelegate
 	{
-        void Initialize(string initString);
+        /// <summary>
+        /// Initializes the driver delegate with configuration data.
+        /// </summary>
+        /// <param name="args"></param>
+        void Initialize(DelegateInitializationArgs args);
 
 		/// <summary>
 		/// Update all triggers having one of the two given states, to the given new
@@ -65,7 +69,7 @@ namespace Quartz.Impl.AdoJobStore
         /// <param name="conn">The DB Connection</param>
         /// <param name="timestamp">The timestamp.</param>
         /// <returns>An array of <see cref="TriggerKey" /> objects</returns>
-        IList<TriggerKey> SelectMisfiredTriggers(ConnectionAndTransactionHolder conn, long timestamp);
+        IList<TriggerKey> SelectMisfiredTriggers(ConnectionAndTransactionHolder conn, DateTimeOffset timestamp);
 
         /// <summary>
         /// Get the names of all of the triggers in the given state that have
@@ -75,7 +79,7 @@ namespace Quartz.Impl.AdoJobStore
         /// <param name="state">The state.</param>
         /// <param name="ts">The time stamp.</param>
         /// <returns>An array of <see cref="TriggerKey" /> objects</returns>
-        IList<TriggerKey> HasMisfiredTriggersInState(ConnectionAndTransactionHolder conn, string state, long ts);
+        IList<TriggerKey> HasMisfiredTriggersInState(ConnectionAndTransactionHolder conn, string state, DateTimeOffset ts);
 
         /// <summary>
         /// Get the names of all of the triggers in the given group and state that
@@ -86,7 +90,7 @@ namespace Quartz.Impl.AdoJobStore
         /// <param name="state">The state.</param>
         /// <param name="ts">The timestamp.</param>
         /// <returns>An array of <see cref="TriggerKey" /> objects</returns>
-        IList<TriggerKey> SelectMisfiredTriggersInGroupInState(ConnectionAndTransactionHolder conn, string groupName, string state, long ts);
+        IList<TriggerKey> SelectMisfiredTriggersInGroupInState(ConnectionAndTransactionHolder conn, string groupName, string state, DateTimeOffset ts);
 
 		/// <summary> 
 		/// Select all of the triggers for jobs that are requesting recovery. The
@@ -705,8 +709,9 @@ namespace Quartz.Impl.AdoJobStore
         /// <param name="conn">The conn.</param>
         /// <param name="noLaterThan">highest value of <see cref="ITrigger.GetNextFireTimeUtc" /> of the triggers (exclusive)</param>
         /// <param name="noEarlierThan">highest value of <see cref="ITrigger.GetNextFireTimeUtc" /> of the triggers (inclusive)</param>
+        /// <param name="maxCount">maximum number of trigger keys allow to acquired in the returning list.</param>
         /// <returns>A (never null, possibly empty) list of the identifiers (Key objects) of the next triggers to be fired.</returns>
-        IList<TriggerKey> SelectTriggerToAcquire(ConnectionAndTransactionHolder conn, DateTimeOffset noLaterThan, DateTimeOffset noEarlierThan);
+        IList<TriggerKey> SelectTriggerToAcquire(ConnectionAndTransactionHolder conn, DateTimeOffset noLaterThan, DateTimeOffset noEarlierThan, int maxCount);
 
         /// <summary>
         /// Select the distinct instance names of all fired-trigger records.

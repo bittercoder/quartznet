@@ -87,14 +87,14 @@ namespace Quartz.Impl.AdoJobStore
             string.Format(CultureInfo.InvariantCulture, "DELETE FROM {0}{1} WHERE {2} = {3} AND {4} = @triggerName AND {5} = @triggerGroup",
                 TablePrefixSubst, TableTriggers, ColumnSchedulerName, SchedulerNameSubst, ColumnTriggerName, ColumnTriggerGroup);
 
-        public static readonly string SqlDeleteAllSimpleTriggers = "DELETE FROM " + TablePrefixSubst + "SIMPLE_TRIGGERS WHERE " + ColumnSchedulerName + " = " + SchedulerNameSubst;
-        public static readonly string SqlDeleteAllSimpropTriggers = "DELETE FROM " + TablePrefixSubst + "SIMPROP_TRIGGERS WHERE " + ColumnSchedulerName + " = " + SchedulerNameSubst;
-        public static readonly string SqlDeleteAllCronTriggers = "DELETE FROM " + TablePrefixSubst + "CRON_TRIGGERS WHERE " + ColumnSchedulerName + " = " + SchedulerNameSubst;
-        public static readonly string SqlDeleteAllBlobTriggers = "DELETE FROM " + TablePrefixSubst + "BLOB_TRIGGERS WHERE " + ColumnSchedulerName + " = " + SchedulerNameSubst;
-        public static readonly string SqlDeleteAllTriggers = "DELETE FROM " + TablePrefixSubst + "TRIGGERS WHERE " + ColumnSchedulerName + " = " + SchedulerNameSubst;
-        public static readonly string SqlDeleteAllJobDetails = "DELETE FROM " + TablePrefixSubst + "JOB_DETAILS WHERE " + ColumnSchedulerName + " = " + SchedulerNameSubst;
-        public static readonly string SqlDeleteAllCalendars = "DELETE FROM " + TablePrefixSubst + "CALENDARS WHERE " + ColumnSchedulerName + " = " + SchedulerNameSubst;
-        public static readonly string SqlDeleteAllPausedTriggerGrps = "DELETE FROM " + TablePrefixSubst + "PAUSED_TRIGGER_GRPS WHERE " + ColumnSchedulerName + " = " + SchedulerNameSubst;
+        public static readonly string SqlDeleteAllSimpleTriggers = string.Format("DELETE FROM {0}SIMPLE_TRIGGERS WHERE {1} = {2}", TablePrefixSubst, ColumnSchedulerName, SchedulerNameSubst);
+        public static readonly string SqlDeleteAllSimpropTriggers = string.Format("DELETE FROM {0}SIMPROP_TRIGGERS WHERE {1} = {2}", TablePrefixSubst, ColumnSchedulerName, SchedulerNameSubst);
+        public static readonly string SqlDeleteAllCronTriggers = string.Format("DELETE FROM {0}CRON_TRIGGERS WHERE {1} = {2}", TablePrefixSubst, ColumnSchedulerName, SchedulerNameSubst);
+        public static readonly string SqlDeleteAllBlobTriggers = string.Format("DELETE FROM {0}BLOB_TRIGGERS WHERE {1} = {2}", TablePrefixSubst, ColumnSchedulerName, SchedulerNameSubst);
+        public static readonly string SqlDeleteAllTriggers = string.Format("DELETE FROM {0}TRIGGERS WHERE {1} = {2}", TablePrefixSubst, ColumnSchedulerName, SchedulerNameSubst);
+        public static readonly string SqlDeleteAllJobDetails = string.Format("DELETE FROM {0}JOB_DETAILS WHERE {1} = {2}", TablePrefixSubst, ColumnSchedulerName, SchedulerNameSubst);
+        public static readonly string SqlDeleteAllCalendars = string.Format("DELETE FROM {0}CALENDARS WHERE {1} = {2}", TablePrefixSubst, ColumnSchedulerName, SchedulerNameSubst);
+        public static readonly string SqlDeleteAllPausedTriggerGrps = string.Format("DELETE FROM {0}PAUSED_TRIGGER_GRPS WHERE {1} = {2}", TablePrefixSubst, ColumnSchedulerName, SchedulerNameSubst);
 
 
         // INSERT
@@ -163,13 +163,13 @@ namespace Quartz.Impl.AdoJobStore
         // SELECT
 
         public static readonly string SqlSelectBlobTrigger =
-            string.Format(CultureInfo.InvariantCulture, "SELECT * FROM {0}{1} WHERE {2} = {3} AND {4} = @triggerName AND {5} = @triggerGroup", TablePrefixSubst,
-                          TableBlobTriggers, ColumnSchedulerName, SchedulerNameSubst, ColumnTriggerName,
-                          ColumnTriggerGroup);
+            string.Format(CultureInfo.InvariantCulture, "SELECT {6} FROM {0}{1} WHERE {2} = {3} AND {4} = @triggerName AND {5} = @triggerGroup", TablePrefixSubst,
+                          TableBlobTriggers, ColumnSchedulerName, SchedulerNameSubst, ColumnTriggerName, ColumnTriggerGroup,
+                          ColumnBlob);
 
         public static readonly string SqlSelectCalendar =
-            string.Format(CultureInfo.InvariantCulture, "SELECT * FROM {0}{1} WHERE {2} = {3} AND {4} = @calendarName", TablePrefixSubst, TableCalendars,
-                          ColumnSchedulerName, SchedulerNameSubst, ColumnCalendarName);
+            string.Format(CultureInfo.InvariantCulture, "SELECT {5} FROM {0}{1} WHERE {2} = {3} AND {4} = @calendarName", TablePrefixSubst, TableCalendars,
+                          ColumnSchedulerName, SchedulerNameSubst, ColumnCalendarName, ColumnCalendar);
 
         public static readonly string SqlSelectCalendarExistence =
             string.Format(CultureInfo.InvariantCulture, "SELECT {0} FROM {1}{2} WHERE {3} = {4} AND {5} = @calendarName",
@@ -217,8 +217,9 @@ namespace Quartz.Impl.AdoJobStore
 
         public static readonly string SqlSelectJobDetail =
             string.Format(CultureInfo.InvariantCulture,
-                "SELECT * FROM {0}{1} WHERE {2} = {3} AND {4} = @jobName AND {5} = @jobGroup",
-                TablePrefixSubst, TableJobDetails, ColumnSchedulerName, SchedulerNameSubst, ColumnJobName, ColumnJobGroup);
+                "SELECT {6},{7},{8},{9},{10},{11},{12} FROM {0}{1} WHERE {2} = {3} AND {4} = @jobName AND {5} = @jobGroup",
+                TablePrefixSubst, TableJobDetails, ColumnSchedulerName, SchedulerNameSubst, ColumnJobName, ColumnJobGroup,
+                ColumnJobName, ColumnJobGroup, ColumnDescription, ColumnJobClass, ColumnIsDurable, ColumnRequestsRecovery, ColumnJobDataMap);
 
         public static readonly string SqlSelectJobExecutionCount =
             string.Format(CultureInfo.InvariantCulture, "SELECT COUNT({0}) FROM {1}{2} WHERE {3} = {4} AND {5} = @jobName AND {6} = @jobGroup",
@@ -250,42 +251,35 @@ namespace Quartz.Impl.AdoJobStore
                 ColumnJobName, ColumnJobGroup, TablePrefixSubst, TableJobDetails, ColumnSchedulerName, SchedulerNameSubst, ColumnJobGroup);
 
         public static readonly string SqlSelectMisfiredTriggers =
-            string.Format(CultureInfo.InvariantCulture, "SELECT * FROM {0}{1} WHERE {2} = {3} AND {4} <> {5} AND {6} < @nextFireTime ORDER BY {7} ASC", TablePrefixSubst,
-                          TableTriggers, ColumnSchedulerName, SchedulerNameSubst, ColumnMifireInstruction, (int)MisfireInstruction.IgnoreMisfirePolicy, ColumnNextFireTime, ColumnNextFireTime);
+            string.Format(CultureInfo.InvariantCulture, "SELECT * FROM {0}{1} WHERE {2} = {3} AND {4} <> {5} AND {6} < @nextFireTime ORDER BY {7} ASC, {8} DESC", TablePrefixSubst,
+                          TableTriggers, ColumnSchedulerName, SchedulerNameSubst, ColumnMifireInstruction, (int)MisfireInstruction.IgnoreMisfirePolicy, ColumnNextFireTime, ColumnNextFireTime, ColumnPriority);
 
         public static readonly string SqlSelectMisfiredTriggersInGroupInState =
-            string.Format(CultureInfo.InvariantCulture, "SELECT {0} FROM {1}{2} WHERE {3} = {4} AND {5} <> {6} AND {7} < @nextFireTime AND {8} = @triggerGroup AND {9} = @state ORDER BY {10} ASC",
+            string.Format(CultureInfo.InvariantCulture, "SELECT {0} FROM {1}{2} WHERE {3} = {4} AND {5} <> {6} AND {7} < @nextFireTime AND {8} = @triggerGroup AND {9} = @state ORDER BY {10} ASC, {11} DESC",
                           ColumnTriggerName, TablePrefixSubst, TableTriggers, ColumnSchedulerName, SchedulerNameSubst,
                           ColumnMifireInstruction, (int)MisfireInstruction.IgnoreMisfirePolicy,
                           ColumnNextFireTime, ColumnTriggerGroup,
-                          ColumnTriggerState, ColumnNextFireTime);
+                          ColumnTriggerState, ColumnNextFireTime, ColumnPriority);
 
         public static readonly string SqlSelectMisfiredTriggersInState =
-            string.Format(CultureInfo.InvariantCulture, "SELECT {0}, {1} FROM {2}{3} WHERE {4} = {5} AND {6} <> {7} AND {8} < @nextFireTime AND {9} = @state ORDER BY {10} ASC", ColumnTriggerName,
+            string.Format(CultureInfo.InvariantCulture, "SELECT {0}, {1} FROM {2}{3} WHERE {4} = {5} AND {6} <> {7} AND {8} < @nextFireTime AND {9} = @state ORDER BY {10} ASC, {11} DESC", ColumnTriggerName,
                           ColumnTriggerGroup, TablePrefixSubst, TableTriggers, ColumnSchedulerName, SchedulerNameSubst, ColumnMifireInstruction, (int)MisfireInstruction.IgnoreMisfirePolicy,
-                          ColumnNextFireTime, ColumnTriggerState, ColumnNextFireTime);
+                          ColumnNextFireTime, ColumnTriggerState, ColumnNextFireTime, ColumnPriority);
 
         public static readonly string SqlCountMisfiredTriggersInStates =
             string.Format("SELECT COUNT({0}) FROM {1}{2} WHERE {3} = {4} AND {5} <> {6} AND {7} < @nextFireTime AND {8} = @state1",
             ColumnTriggerName, TablePrefixSubst, TableTriggers, ColumnSchedulerName, SchedulerNameSubst, ColumnMifireInstruction, (int)MisfireInstruction.IgnoreMisfirePolicy, ColumnNextFireTime, ColumnTriggerState);
 
         public static readonly string SqlSelectHasMisfiredTriggersInState =
-            string.Format("SELECT {0}, {1} FROM {2}{3} WHERE {4} = {5} AND {6} <> {7} AND {8} < @nextFireTime AND {9} = @state1 ORDER BY {10} ASC",
-            ColumnTriggerName, ColumnTriggerGroup, TablePrefixSubst, TableTriggers, ColumnSchedulerName, SchedulerNameSubst, 
-            ColumnMifireInstruction, (int)MisfireInstruction.IgnoreMisfirePolicy, ColumnNextFireTime, ColumnTriggerState, ColumnNextFireTime);
-
-        public static readonly string SqlSelectNextFireTime =
-            string.Format(CultureInfo.InvariantCulture, "SELECT MIN({0}) AS {1} FROM {2}{3} WHERE {4} = {5} AND {6} = @state AND {7} >= 0",
-                          ColumnNextFireTime, AliasColumnNextFireTime, TablePrefixSubst,
-                          TableTriggers, ColumnSchedulerName, SchedulerNameSubst,  ColumnTriggerState, ColumnNextFireTime);
+            string.Format("SELECT {0}, {1} FROM {2}{3} WHERE {4} = {5} AND {6} <> {7} AND {8} < @nextFireTime AND {9} = @state1 ORDER BY {10} ASC, {11} DESC",
+            ColumnTriggerName, ColumnTriggerGroup, TablePrefixSubst, TableTriggers, ColumnSchedulerName, SchedulerNameSubst,
+            ColumnMifireInstruction, (int)MisfireInstruction.IgnoreMisfirePolicy, ColumnNextFireTime, ColumnTriggerState, ColumnNextFireTime, ColumnPriority);
 
         public static readonly string SqlSelectNextTriggerToAcquire =
-            string.Format(CultureInfo.InvariantCulture, "SELECT {0}, {1}, {2}, {3} FROM {4}{5} WHERE {6} = {7} AND {8} = @state AND {9} < @noLaterThan AND {10} >= @noEarlierThan ORDER BY {11} ASC, {12} DESC", 
+            string.Format(CultureInfo.InvariantCulture, "SELECT {0}, {1}, {2}, {3} FROM {4}{5} WHERE {6} = {7} AND {8} = @state AND {9} <= @noLaterThan AND ({10} = -1 OR ({10} <> -1 AND {9} >= @noEarlierThan)) ORDER BY {9} ASC, {11} DESC", 
             ColumnTriggerName, ColumnTriggerGroup, ColumnNextFireTime, ColumnPriority,
             TablePrefixSubst, TableTriggers, ColumnSchedulerName, SchedulerNameSubst,
-            ColumnTriggerState, ColumnNextFireTime, 
-            ColumnNextFireTime, ColumnNextFireTime, 
-            ColumnPriority);
+            ColumnTriggerState, ColumnNextFireTime, ColumnMifireInstruction, ColumnPriority);
 
         public static readonly string SqlSelectNumCalendars =
             string.Format(CultureInfo.InvariantCulture, "SELECT COUNT({0})  FROM {1}{2} WHERE {3} = {4}",
@@ -331,8 +325,9 @@ namespace Quartz.Impl.AdoJobStore
                 TablePrefixSubst, TableSimpleTriggers, ColumnSchedulerName, SchedulerNameSubst, ColumnTriggerName, ColumnTriggerGroup);
 
         public static readonly string SqlSelectTrigger =
-            string.Format(CultureInfo.InvariantCulture, "SELECT * FROM {0}{1} WHERE {2} = {3} AND {4} = @triggerName AND {5} = @triggerGroup",
-                TablePrefixSubst, TableTriggers, ColumnSchedulerName, SchedulerNameSubst, ColumnTriggerName, ColumnTriggerGroup);
+            string.Format(CultureInfo.InvariantCulture, "SELECT {6},{7},{8},{9},{10},{11},{12},{13},{14},{15},{16},{17} FROM {0}{1} WHERE {2} = {3} AND {4} = @triggerName AND {5} = @triggerGroup",
+                TablePrefixSubst, TableTriggers, ColumnSchedulerName, SchedulerNameSubst, ColumnTriggerName, ColumnTriggerGroup,
+                ColumnJobName, ColumnJobGroup, ColumnDescription, ColumnNextFireTime, ColumnPreviousFireTime, ColumnTriggerType, ColumnStartTime, ColumnEndTime, ColumnCalendarName, ColumnMifireInstruction, ColumnPriority, ColumnJobDataMap);
 
         public static readonly string SqlSelectTriggerData =
             string.Format(CultureInfo.InvariantCulture, "SELECT {0} FROM {1}{2} WHERE {3} = {4} AND {5} = @triggerName AND {6} = @triggerGroup",

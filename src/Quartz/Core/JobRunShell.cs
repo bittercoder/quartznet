@@ -22,6 +22,8 @@ using System.Globalization;
 using System.Threading;
 
 using Common.Logging;
+
+using Quartz.Impl;
 using Quartz.Listener;
 using Quartz.Spi;
 
@@ -53,7 +55,7 @@ namespace Quartz.Core
         private JobExecutionContextImpl jec;
 		private QuartzScheduler qs;
 		private readonly IScheduler scheduler;
-	    private TriggerFiredBundle firedTriggerBundle = null;
+	    private readonly TriggerFiredBundle firedTriggerBundle;
         private volatile bool shutdownRequested;
 
 
@@ -62,11 +64,11 @@ namespace Quartz.Core
 		/// </summary>
 		/// <param name="scheduler">The <see cref="IScheduler" /> instance that should be made
 		/// available within the <see cref="IJobExecutionContext" />.</param>
-		/// <param name="bndle"></param>
-        public JobRunShell(IScheduler scheduler, TriggerFiredBundle bndle)
+		/// <param name="bundle"></param>
+        public JobRunShell(IScheduler scheduler, TriggerFiredBundle bundle)
 		{
 			this.scheduler = scheduler;
-            this.firedTriggerBundle = bndle;
+            firedTriggerBundle = bundle;
             log = LogManager.GetLogger(GetType());
 		}
 
@@ -163,6 +165,12 @@ namespace Quartz.Core
                             catch (JobPersistenceException)
                             {
                                 VetoedJobRetryLoop(trigger, jobDetail, instCode);
+                            }
+
+                            // Even if trigger got vetoed, we still needs to check to see if it's the trigger's finalized run or not.
+                            if (jec.Trigger.GetNextFireTimeUtc() == null)
+                            {
+                                qs.NotifySchedulerListenersFinalized(jec.Trigger);
                             }
                             Complete(true);
                         }
@@ -279,8 +287,8 @@ namespace Quartz.Core
                                           jobDetail.Key), jpe);
                         if (!CompleteTriggerRetryLoop(trigger, jobDetail, instCode))
                         {
+                            return;
                         }
-                        return;
                     }
 
                     break;
@@ -290,13 +298,17 @@ namespace Quartz.Core
 		    finally
             {
                 qs.RemoveInternalSchedulerListener(this);
+                if (jec != null && jec.JobInstance != null)
+                {
+                    qs.JobFactory.ReturnJob(jec.JobInstance);
+                }
             }
 		}
 
 		/// <summary>
 		/// Runs begin procedures on this instance.
 		/// </summary>
-		protected internal virtual void Begin()
+		protected virtual void Begin()
 		{
 		}
 
@@ -304,7 +316,7 @@ namespace Quartz.Core
 		/// Completes the execution.
 		/// </summary>
 		/// <param name="successfulExecution">if set to <c>true</c> [successful execution].</param>
-		protected internal virtual void Complete(bool successfulExecution)
+        protected virtual void Complete(bool successfulExecution)
 		{
 		}
 
@@ -417,8 +429,7 @@ namespace Quartz.Core
             {
 				try
 				{
-                    Thread.Sleep(TimeSpan.FromSeconds(15)); 
-                    // retry every 15 seconds (the db connection must be failed)
+                    Thread.Sleep(qs.DbRetryInterval); // retry per config setting (the db connection must be failed)
 					qs.NotifyJobStoreJobComplete(trigger, jobDetail, instCode);
 					return true;
 				}
@@ -450,8 +461,7 @@ namespace Quartz.Core
             {
                 try
                 {
-                    Thread.Sleep(TimeSpan.FromSeconds(5)); // retry every 5 seconds (the db
-                    // connection must be failed)
+                    Thread.Sleep(qs.DbRetryInterval); // retry per config setting (the db connection must be failed)
                     qs.NotifyJobStoreJobVetoed(trigger, jobDetail, instCode);
                     return true;
                 }

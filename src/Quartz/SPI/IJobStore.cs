@@ -56,6 +56,18 @@ namespace Quartz.Spi
 		/// </summary>
 		void SchedulerStarted();
 
+        /// <summary>
+        /// Called by the QuartzScheduler to inform the JobStore that
+        /// the scheduler has been paused.
+        /// </summary>
+        void SchedulerPaused();
+
+        /// <summary>
+        /// Called by the QuartzScheduler to inform the JobStore that
+        /// the scheduler has resumed after being paused.
+        /// </summary>
+        void SchedulerResumed();
+
 		/// <summary>
 		/// Called by the QuartzScheduler to inform the <see cref="IJobStore" /> that
 		/// it should free up all of it's resources because the scheduler is
@@ -115,7 +127,7 @@ namespace Quartz.Spi
         /// </param>
 		void StoreJob(IJobDetail newJob, bool replaceExisting);
 
-	    void StoreJobsAndTriggers(IDictionary<IJobDetail, IList<ITrigger>> triggersAndJobs, bool replace); 
+	    void StoreJobsAndTriggers(IDictionary<IJobDetail, Collection.ISet<ITrigger>> triggersAndJobs, bool replace); 
 
         /// <summary>
         /// Remove (delete) the <see cref="IJob" /> with the given
@@ -378,7 +390,7 @@ namespace Quartz.Spi
 		/// pause on any new triggers that are added to the group while the group is
 		/// paused.
 		/// </remarks>
-		IList<string> PauseTriggers(GroupMatcher<TriggerKey> matcher);
+        Collection.ISet<string> PauseTriggers(GroupMatcher<TriggerKey> matcher);
 
 		/// <summary>
 		/// Pause the <see cref="IJob" /> with the given key - by

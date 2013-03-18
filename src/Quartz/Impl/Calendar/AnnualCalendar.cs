@@ -18,7 +18,12 @@
 #endregion
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Runtime.Serialization;
+using System.Security;
+
+using Quartz.Util;
 
 namespace Quartz.Impl.Calendar
 {
@@ -52,9 +57,61 @@ namespace Quartz.Impl.Calendar
         /// Constructor
         /// </summary>
         /// <param name="baseCalendar">The base calendar.</param>
-        public AnnualCalendar(ICalendar baseCalendar)
-            : base(baseCalendar)
+        public AnnualCalendar(ICalendar baseCalendar) : base(baseCalendar)
         {
+        }
+
+        /// <summary>
+        /// Serialization constructor.
+        /// </summary>
+        /// <param name="info"></param>
+        /// <param name="context"></param>
+        protected AnnualCalendar(SerializationInfo info, StreamingContext context) : base(info, context)
+        {
+            int version;
+            try
+            {
+                version = info.GetInt32("version");
+            }
+            catch
+            {
+                version = 0;
+            }
+
+            switch (version)
+            {
+                case 0:
+                    // 1.x
+                    object o = info.GetValue("excludeDays", typeof(object));
+                    ArrayList oldFormat = o as ArrayList;
+                    if (oldFormat != null)
+                    {
+                        foreach (DateTime dateTime in oldFormat)
+                        {
+                            excludeDays.Add(dateTime);
+                        }
+                    }
+                    else
+                    {
+                        // must be new..
+                        excludeDays = (List<DateTimeOffset>) o;
+                    }
+                    break;
+                case 1:
+                    excludeDays = (List<DateTimeOffset>)info.GetValue("excludeDays", typeof(List<DateTimeOffset>));
+                    break;
+                default:
+                    throw new NotSupportedException("Unknown serialization version");
+            }
+
+        }
+
+        [SecurityCritical]
+        public override void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            base.GetObjectData(info, context);
+            info.AddValue("version", 1);
+            info.AddValue("excludeDays", excludeDays);
         }
 
         /// <summary> 
@@ -95,7 +152,7 @@ namespace Quartz.Impl.Calendar
             {
                 return true;
             }
-
+            
             int dmonth = day.Month;
             int dday = day.Day;
 
@@ -171,7 +228,10 @@ namespace Quartz.Impl.Calendar
                 return false;
             }
 
-            return !(IsDayExcluded(TimeZoneInfo.ConvertTime(dateUtc, TimeZoneInfo.Local)));
+            //apply the timezone
+            dateUtc = TimeZoneUtil.ConvertTime(dateUtc, this.TimeZone);
+
+            return !(IsDayExcluded(dateUtc));
         }
 
         /// <summary>
@@ -191,8 +251,11 @@ namespace Quartz.Impl.Calendar
                 timeStampUtc = baseTime;
             }
 
-            // Get timestamp for 00:00:00
-            DateTime day = TimeZoneInfo.ConvertTimeFromUtc(new DateTime(timeStampUtc.Year, timeStampUtc.Month, timeStampUtc.Day), TimeZoneInfo.Local);
+            //apply the timezone
+            timeStampUtc = TimeZoneUtil.ConvertTime(timeStampUtc, this.TimeZone);
+
+            // Get timestamp for 00:00:00, in the correct timezone offset
+            DateTimeOffset day = new DateTimeOffset(timeStampUtc.Date, timeStampUtc.Offset);
 
             if (!IsDayExcluded(day))
             {
@@ -205,7 +268,7 @@ namespace Quartz.Impl.Calendar
                 day = day.AddDays(1);
             }
 
-            return TimeZoneInfo.ConvertTimeToUtc(day);
+            return day;
         }
 
 
@@ -220,6 +283,8 @@ namespace Quartz.Impl.Calendar
             return excludeDays.GetHashCode() + 5 * baseHash;
         }
 
+
+
         public bool Equals(AnnualCalendar obj)
         {
             if (obj == null)
@@ -227,8 +292,7 @@ namespace Quartz.Impl.Calendar
                 return false;
             }
 
-            bool toReturn = GetBaseCalendar() != null ?
-                             GetBaseCalendar().Equals(obj.GetBaseCalendar()) : true;
+            bool toReturn = GetBaseCalendar() == null || GetBaseCalendar().Equals(obj.GetBaseCalendar());
 
             toReturn = toReturn && (DaysExcluded.Count == obj.DaysExcluded.Count);
             if (toReturn)

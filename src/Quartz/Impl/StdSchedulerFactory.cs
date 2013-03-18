@@ -18,12 +18,12 @@
 #endregion
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Configuration;
 using System.IO;
 using System.Reflection;
+using System.Security;
 
 using Common.Logging;
 
@@ -88,7 +88,7 @@ namespace Quartz.Impl
         public const string PropertySchedulerExporterPrefix = "quartz.scheduler.exporter";
         public const string PropertySchedulerExporterType = PropertySchedulerExporterPrefix + ".type";
         public const string PropertySchedulerProxy = "quartz.scheduler.proxy";
-        public const string PropertySchedulerProxyAddress = "quartz.scheduler.proxy.address";
+        public const string PropertySchedulerProxyType = "quartz.scheduler.proxy.type";
         public const string PropertySchedulerIdleWaitTime = "quartz.scheduler.idleWaitTime";
         public const string PropertySchedulerDbFailureRetryInterval = "quartz.scheduler.dbFailureRetryInterval";
         public const string PropertySchedulerMakeSchedulerThreadDaemon = "quartz.scheduler.makeSchedulerThreadDaemon";
@@ -121,6 +121,7 @@ namespace Quartz.Impl
         public const string AutoGenerateInstanceId = "AUTO";
         public const string PropertyThreadExecutor = "quartz.threadExecutor";
         public const string PropertyThreadExecutorType= "quartz.threadExecutor.type";
+        public const string PropertyObjectSerializer = "quartz.serializer";
 
         public const string SystemPropertyAsInstanceId = "SYS_PROP";
 
@@ -146,14 +147,10 @@ namespace Quartz.Impl
         /// </summary>
         /// <seealso cref="Initialize()">
         /// </seealso>
-        public static IScheduler DefaultScheduler
+        public static IScheduler GetDefaultScheduler()
         {
-            get
-            {
-                StdSchedulerFactory fact = new StdSchedulerFactory();
-
-                return fact.GetScheduler();
-            }
+            StdSchedulerFactory fact = new StdSchedulerFactory();
+            return fact.GetScheduler();
         }
 
         /// <summary> <para>
@@ -207,11 +204,20 @@ namespace Quartz.Impl
 
             NameValueCollection props = (NameValueCollection) ConfigurationManager.GetSection("quartz");
 
-            string requestedFile = Environment.GetEnvironmentVariable(PropertiesFile);
+            string requestedFile = QuartzEnvironment.GetEnvironmentVariable(PropertiesFile);
+
             string propFileName = requestedFile != null && requestedFile.Trim().Length > 0 ? requestedFile : "~/quartz.config";
 
             // check for specials
-            propFileName = FileUtil.ResolveFile(propFileName);
+            try
+            {
+                propFileName = FileUtil.ResolveFile(propFileName);
+            }
+            catch (SecurityException)
+            {
+                log.WarnFormat("Unable to resolve file path '{0}' due to security exception, probably running under medium trust");
+                propFileName = "quartz.config";
+            }
 
             if (props == null && File.Exists(propFileName))
             {
@@ -260,12 +266,13 @@ Please add configuration to your application config file to correctly initialize
         private static NameValueCollection OverrideWithSysProps(NameValueCollection props)
         {
             NameValueCollection retValue = new NameValueCollection(props);
-            IDictionary vars = Environment.GetEnvironmentVariables();
+            IDictionary<string, string> vars = QuartzEnvironment.GetEnvironmentVariables();
 
             foreach (string key in vars.Keys)
             {
-                retValue.Set(key, vars[key] as string);
+                retValue.Set(key, vars[key]);
             }
+
             return retValue;
         }
 
@@ -347,12 +354,12 @@ Please add configuration to your application config file to correctly initialize
             IJobStore js;
             IThreadPool tp;
             QuartzScheduler qs = null;
-            DBConnectionManager dbMgr = null;
+            IDbConnectionManager dbMgr = null;
             Type instanceIdGeneratorType = null;
             NameValueCollection tProps;
             bool autoId = false;
             TimeSpan idleWaitTime = TimeSpan.Zero;
-            TimeSpan dbFailureRetry = TimeSpan.Zero;
+            TimeSpan dbFailureRetry = TimeSpan.FromSeconds(15);
             IThreadExecutor threadExecutor;
 
             SchedulerRepository schedRep = SchedulerRepository.Instance;
@@ -379,7 +386,17 @@ Please add configuration to your application config file to correctly initialize
             Type jobFactoryType = LoadType(cfg.GetStringProperty(PropertySchedulerJobFactoryType, null));
 
             idleWaitTime = cfg.GetTimeSpanProperty(PropertySchedulerIdleWaitTime, idleWaitTime);
+            if (idleWaitTime > TimeSpan.Zero && idleWaitTime < TimeSpan.FromMilliseconds(1000))
+            {
+                throw new SchedulerException("quartz.scheduler.idleWaitTime of less than 1000ms is not legal.");
+            }
+
             dbFailureRetry = cfg.GetTimeSpanProperty(PropertySchedulerDbFailureRetryInterval, dbFailureRetry);
+            if (dbFailureRetry < TimeSpan.Zero)
+            {
+                throw new SchedulerException(PropertySchedulerDbFailureRetryInterval + " of less than 0 ms is not legal.");
+            }
+
             bool makeSchedulerThreadDaemon = cfg.GetBooleanProperty(PropertySchedulerMakeSchedulerThreadDaemon);
             long batchTimeWindow = cfg.GetLongProperty(PropertySchedulerBatchTimeWindow, 0L);
             int maxBatchSize = cfg.GetIntProperty(PropertySchedulerMaxBatchSize, 1);
@@ -390,24 +407,7 @@ Please add configuration to your application config file to correctly initialize
             NameValueCollection schedCtxtProps = cfg.GetPropertyGroup(PropertySchedulerContextPrefix, true);
 
             bool proxyScheduler = cfg.GetBooleanProperty(PropertySchedulerProxy, false);
-            // If Proxying to remote scheduler, short-circuit here...
-            // ~~~~~~~~~~~~~~~~~~
-            if (proxyScheduler)
-            {
-                if (autoId)
-                {
-                    schedInstId = DefaultInstanceId;
-                }
 
-                string uid = QuartzSchedulerResources.GetUniqueIdentifier(schedName, schedInstId);
-
-                RemoteScheduler remoteScheduler = new RemoteScheduler(uid);
-                string remoteSchedulerAddress = cfg.GetStringProperty(PropertySchedulerProxyAddress);
-                remoteScheduler.RemoteSchedulerAddress = remoteSchedulerAddress;
-                schedRep.Bind(remoteScheduler);
-
-                return remoteScheduler;
-            }
 
             // Create type load helper
             ITypeLoadHelper loadHelper;
@@ -420,6 +420,39 @@ Please add configuration to your application config file to correctly initialize
                 throw new SchedulerConfigException("Unable to instantiate type load helper: {0}".FormatInvariant(e.Message), e);
             }
             loadHelper.Initialize();
+            
+            
+            // If Proxying to remote scheduler, short-circuit here...
+            // ~~~~~~~~~~~~~~~~~~
+            if (proxyScheduler)
+            {
+                if (autoId)
+                {
+                    schedInstId = DefaultInstanceId;
+                }
+
+                Type proxyType = loadHelper.LoadType(cfg.GetStringProperty(PropertySchedulerProxyType)) ?? typeof(RemotingSchedulerProxyFactory);
+                IRemotableSchedulerProxyFactory factory;
+                try
+                {
+                    factory = ObjectUtils.InstantiateType<IRemotableSchedulerProxyFactory>(proxyType);
+                    ObjectUtils.SetObjectProperties(factory, cfg.GetPropertyGroup(PropertySchedulerProxy, true));
+                }
+                catch (Exception e)
+                {
+                    initException = new SchedulerException("Remotable proxy factory '{0}' could not be instantiated.".FormatInvariant(proxyType), e);
+                    throw initException;
+                }
+
+                string uid = QuartzSchedulerResources.GetUniqueIdentifier(schedName, schedInstId);
+
+                RemoteScheduler remoteScheduler = new RemoteScheduler(uid, factory);
+                
+                schedRep.Bind(remoteScheduler);
+
+                return remoteScheduler;
+            }
+
 
             IJobFactory jobFactory = null;
             if (jobFactoryType != null)
@@ -493,13 +526,13 @@ Please add configuration to your application config file to correctly initialize
                 throw initException;
             }
 
-                        // Set up any DataSources
+            // Set up any DataSources
             // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-            string[] dsNames = cfg.GetPropertyGroups(PropertyDataSourcePrefix);
-            for (int i = 0; i < dsNames.Length; i++)
+            IList<string> dsNames = cfg.GetPropertyGroups(PropertyDataSourcePrefix);
+            foreach (string dataSourceName in dsNames)
             {
-                string datasourceKey = "{0}.{1}".FormatInvariant( PropertyDataSourcePrefix, dsNames[i]);
+                string datasourceKey = "{0}.{1}".FormatInvariant(PropertyDataSourcePrefix, dataSourceName);
                 NameValueCollection propertyGroup = cfg.GetPropertyGroup(datasourceKey, true);
                 PropertiesParser pp = new PropertiesParser(propertyGroup);
 
@@ -525,6 +558,7 @@ Please add configuration to your application config file to correctly initialize
                         pp.UnderlyingProperties.Remove(PropertyDbProviderType);
 
                         ObjectUtils.SetObjectProperties(cp, pp.UnderlyingProperties);
+                        cp.Initialize();
                     }
                     catch (Exception e)
                     {
@@ -533,7 +567,7 @@ Please add configuration to your application config file to correctly initialize
                     }
 
                     dbMgr = DBConnectionManager.Instance;
-                    dbMgr.AddConnectionProvider(dsNames[i], cp);
+                    dbMgr.AddConnectionProvider(dataSourceName, cp);
                 }
                 else
                 {
@@ -547,7 +581,7 @@ Please add configuration to your application config file to correctly initialize
                         ConnectionStringSettings connectionStringSettings = ConfigurationManager.ConnectionStrings[dsConnectionStringName];
                         if (connectionStringSettings == null)
                         {
-                            initException = new SchedulerException("Named connection string '{0}' not found for DataSource: {1}".FormatInvariant(dsConnectionStringName,  dsNames[i]));
+                            initException = new SchedulerException("Named connection string '{0}' not found for DataSource: {1}".FormatInvariant(dsConnectionStringName, dataSourceName));
                             throw initException;
                         }
                         dsConnectionString = connectionStringSettings.ConnectionString;
@@ -555,27 +589,55 @@ Please add configuration to your application config file to correctly initialize
 
                     if (dsProvider == null)
                     {
-                        initException = new SchedulerException("Provider not specified for DataSource: {0}".FormatInvariant(dsNames[i]));
+                        initException = new SchedulerException("Provider not specified for DataSource: {0}".FormatInvariant(dataSourceName));
                         throw initException;
                     }
                     if (dsConnectionString == null)
                     {
-                        initException = new SchedulerException("Connection string not specified for DataSource: {0}".FormatInvariant(dsNames[i]));
+                        initException = new SchedulerException("Connection string not specified for DataSource: {0}".FormatInvariant(dataSourceName));
                         throw initException;
                     }
                     try
                     {
                         DbProvider dbp = new DbProvider(dsProvider, dsConnectionString);
-						
+                        dbp.Initialize();
+
                         dbMgr = DBConnectionManager.Instance;
-                        dbMgr.AddConnectionProvider(dsNames[i], dbp);
+                        dbMgr.AddConnectionProvider(dataSourceName, dbp);
                     }
                     catch (Exception exception)
                     {
-                        initException = new SchedulerException("Could not Initialize DataSource: {0}".FormatInvariant(dsNames[i]), exception);
+                        initException = new SchedulerException("Could not Initialize DataSource: {0}".FormatInvariant(dataSourceName), exception);
                         throw initException;
                     }
                 }
+            }
+            
+            // Get object serializer properties
+            // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+            IObjectSerializer objectSerializer;
+            string objectSerializerType = cfg.GetStringProperty("quartz.serializer.type");
+            if (objectSerializerType != null)
+            {
+                tProps = cfg.GetPropertyGroup(PropertyObjectSerializer, true);
+                try
+                {
+                    objectSerializer = ObjectUtils.InstantiateType<IObjectSerializer>(loadHelper.LoadType(objectSerializerType));
+                    log.Info("Using custom implementation for object serializer: " + objectSerializerType);
+
+                    ObjectUtils.SetObjectProperties(objectSerializer, tProps);
+                }
+                catch (Exception e)
+                {
+                    initException = new SchedulerException("Object serializer type '" + objectSerializerType + "' could not be instantiated.", e);
+                    throw initException;
+                }
+            }
+            else
+            {
+                log.Info("Using default implementation for object serializer");
+                objectSerializer = new DefaultObjectSerializer();
             }
 
             // Get JobStore Properties
@@ -662,13 +724,13 @@ Please add configuration to your application config file to correctly initialize
             // Set up any SchedulerPlugins
             // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-            string[] pluginNames = cfg.GetPropertyGroups(PropertyPluginPrefix);
-            ISchedulerPlugin[] plugins = new ISchedulerPlugin[pluginNames.Length];
-            for (int i = 0; i < pluginNames.Length; i++)
+            IList<string> pluginNames = cfg.GetPropertyGroups(PropertyPluginPrefix);
+            ISchedulerPlugin[] plugins = new ISchedulerPlugin[pluginNames.Count];
+            for (int i = 0; i < pluginNames.Count; i++)
             {
                 NameValueCollection pp = cfg.GetPropertyGroup("{0}.{1}".FormatInvariant(PropertyPluginPrefix, pluginNames[i]), true);
 
-                string plugInType = pp[PropertyPluginType] ?? null;
+                string plugInType = pp[PropertyPluginType];
 
                 if (plugInType == null)
                 {
@@ -699,9 +761,9 @@ Please add configuration to your application config file to correctly initialize
 
             // Set up any JobListeners
             // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-            string[] jobListenerNames = cfg.GetPropertyGroups(PropertyJobListenerPrefix);
-            IJobListener[] jobListeners = new IJobListener[jobListenerNames.Length];
-            for (int i = 0; i < jobListenerNames.Length; i++)
+            IList<string> jobListenerNames = cfg.GetPropertyGroups(PropertyJobListenerPrefix);
+            IJobListener[] jobListeners = new IJobListener[jobListenerNames.Count];
+            for (int i = 0; i < jobListenerNames.Count; i++)
             {
                 NameValueCollection lp = cfg.GetPropertyGroup("{0}.{1}".FormatInvariant(PropertyJobListenerPrefix, jobListenerNames[i]), true);
 
@@ -742,9 +804,9 @@ Please add configuration to your application config file to correctly initialize
             // Set up any TriggerListeners
             // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-            string[] triggerListenerNames = cfg.GetPropertyGroups(PropertyTriggerListenerPrefix);
-            ITriggerListener[] triggerListeners = new ITriggerListener[triggerListenerNames.Length];
-            for (int i = 0; i < triggerListenerNames.Length; i++)
+            IList<string> triggerListenerNames = cfg.GetPropertyGroups(PropertyTriggerListenerPrefix);
+            ITriggerListener[] triggerListeners = new ITriggerListener[triggerListenerNames.Count];
+            for (int i = 0; i < triggerListenerNames.Count; i++)
             {
                 NameValueCollection lp = cfg.GetPropertyGroup("{0}.{1}".FormatInvariant(PropertyTriggerListenerPrefix, triggerListenerNames[i]), true);
 
@@ -873,6 +935,9 @@ Please add configuration to your application config file to correctly initialize
                 {
                     JobStoreSupport jjs = (JobStoreSupport) js;
                     jjs.DbRetryInterval = dbFailureRetry;
+                    jjs.ThreadExecutor = threadExecutor;
+                    // object serializer
+                    jjs.ObjectSerializer = objectSerializer; 
                 }
 
                 QuartzSchedulerResources rsrcs = new QuartzSchedulerResources();
@@ -904,9 +969,9 @@ Please add configuration to your application config file to correctly initialize
                 rsrcs.JobStore = js;
 
                 // add plugins
-                for (int i = 0; i < plugins.Length; i++)
+                foreach (ISchedulerPlugin plugin in plugins)
                 {
-                    rsrcs.AddSchedulerPlugin(plugins[i]);
+                    rsrcs.AddSchedulerPlugin(plugin);
                 }
 
                 qs = new QuartzScheduler(rsrcs, idleWaitTime, dbFailureRetry);
@@ -928,13 +993,13 @@ Please add configuration to your application config file to correctly initialize
                 }
 
                 // add listeners
-                for (int i = 0; i < jobListeners.Length; i++)
+                foreach (IJobListener listener in jobListeners)
                 {
-                    qs.ListenerManager.AddJobListener(jobListeners[i], EverythingMatcher<JobKey>.AllJobs());
+                    qs.ListenerManager.AddJobListener(listener, EverythingMatcher<JobKey>.AllJobs());
                 }
-                for (int i = 0; i < triggerListeners.Length; i++)
+                foreach (ITriggerListener listener in triggerListeners)
                 {
-                    qs.ListenerManager.AddTriggerListener(triggerListeners[i], EverythingMatcher<TriggerKey>.AllTriggers());
+                    qs.ListenerManager.AddTriggerListener(listener, EverythingMatcher<TriggerKey>.AllTriggers());
                 }
 
                 // set scheduler context data...
@@ -948,8 +1013,8 @@ Please add configuration to your application config file to correctly initialize
 
                 js.InstanceId = schedInstId;
                 js.InstanceName = schedName;
-                js.Initialize(loadHelper, qs.SchedulerSignaler);
                 js.ThreadPoolSize = tp.PoolSize;
+                js.Initialize(loadHelper, qs.SchedulerSignaler);
 
                 jrsf.Initialize(sched);
                 qs.Initialize();
@@ -996,7 +1061,7 @@ Please add configuration to your application config file to correctly initialize
             }
         }
 
-        protected internal virtual IScheduler Instantiate(QuartzSchedulerResources rsrcs, QuartzScheduler qs)
+        protected virtual IScheduler Instantiate(QuartzSchedulerResources rsrcs, QuartzScheduler qs)
         {
             IScheduler sched = new StdScheduler(qs);
             return sched;

@@ -1,4 +1,5 @@
 #region License
+
 /* 
  * All content copyright Terracotta, Inc., unless otherwise indicated. All rights reserved. 
  * 
@@ -15,9 +16,14 @@
  * under the License.
  * 
  */
+
 #endregion
 
+using Quartz.Util;
+
 using System;
+using System.Runtime.Serialization;
+using System.Security;
 
 namespace Quartz.Impl.Calendar
 {
@@ -31,8 +37,80 @@ namespace Quartz.Impl.Calendar
     /// <author>Juergen Donnerstag</author>
     /// <author>Marko Lahma (.NET)</author>
     [Serializable]
-    public class WeeklyCalendar : BaseCalendar, ICalendar
+    public class WeeklyCalendar : BaseCalendar
     {
+        // An array to store the week days which are to be excluded.
+        // DayOfWeek enumeration values are used as index.
+        private bool[] excludeDays = new bool[7];
+
+        // Will be set to true, if all week days are excluded
+        private bool excludeAll = false;
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="WeeklyCalendar"/> class.
+        /// </summary>
+        public WeeklyCalendar()
+        {
+            Init();
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="WeeklyCalendar"/> class.
+        /// </summary>
+        /// <param name="baseCalendar">The base calendar.</param>
+        public WeeklyCalendar(ICalendar baseCalendar) : base(baseCalendar)
+        {
+            Init();
+        }
+
+        /// <summary>
+        /// Serialization constructor.
+        /// </summary>
+        /// <param name="info"></param>
+        /// <param name="context"></param>
+        protected WeeklyCalendar(SerializationInfo info, StreamingContext context) : base(info, context)
+        {
+            int version;
+            try
+            {
+                version = info.GetInt32("version");
+            }
+            catch
+            {
+                version = 0;
+            }
+
+            switch (version)
+            {
+                case 0:
+                case 1:
+                    excludeDays = (bool[]) info.GetValue("excludeDays", typeof (bool[]));
+                    excludeAll = (bool) info.GetValue("excludeAll", typeof (bool));
+                    break;
+                default:
+                    throw new NotSupportedException("Unknown serialization version");
+            }
+        }
+
+        [SecurityCritical]
+        public override void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            base.GetObjectData(info, context);
+            info.AddValue("version", 1);
+            info.AddValue("excludeDays", excludeDays);
+            info.AddValue("excludeAll", excludeAll);
+        }
+
+        /// <summary>
+        /// Initialize internal variables
+        /// </summary>
+        private void Init()
+        {
+            excludeDays[(int) DayOfWeek.Sunday] = true;
+            excludeDays[(int) DayOfWeek.Saturday] = true;
+            excludeAll = AreAllDaysExcluded();
+        }
+
         /// <summary> 
         /// Get the array with the week days.
         /// Setting will redefine the array of days excluded. The array must of size greater or
@@ -55,58 +133,22 @@ namespace Quartz.Impl.Calendar
             }
         }
 
-        // An array to store the week days which are to be excluded.
-        // DayOfWeek enumeration values are used as index.
-        private bool[] excludeDays = new bool[7];
-
-        // Will be set to true, if all week days are excluded
-        private bool excludeAll = false;
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="WeeklyCalendar"/> class.
-        /// </summary>
-        public WeeklyCalendar()
-        {
-            Init();
-        }
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="WeeklyCalendar"/> class.
-        /// </summary>
-        /// <param name="baseCalendar">The base calendar.</param>
-        public WeeklyCalendar(ICalendar baseCalendar)
-            : base(baseCalendar)
-        {
-            Init();
-        }
-
-        /// <summary>
-        /// Initialize internal variables
-        /// </summary>
-        private void Init()
-        {
-            excludeDays[(int)DayOfWeek.Sunday] = true;
-            excludeDays[(int)DayOfWeek.Saturday] = true;
-            excludeAll = AreAllDaysExcluded();
-        }
-
         /// <summary> 
         /// Return true, if wday is defined to be exluded. E. g.
         /// saturday and sunday.
         /// </summary>
         public virtual bool IsDayExcluded(DayOfWeek wday)
         {
-            return excludeDays[(int)wday];
+            return excludeDays[(int) wday];
         }
 
         /// <summary>
         /// Redefine a certain day of the week to be excluded (true) or included
-        /// (false). Use java.util.Calendar's constants like MONDAY to determine the
-        /// wday.
+        /// (false). Use <see cref="DayOfWeek"/> enum to determine the weekday.
         /// </summary>
         public virtual void SetDayExcluded(DayOfWeek wday, bool exclude)
         {
-            excludeDays[(int)wday] = exclude;
+            excludeDays[(int) wday] = exclude;
             excludeAll = AreAllDaysExcluded();
         }
 
@@ -174,6 +216,7 @@ namespace Quartz.Impl.Calendar
                 return false;
             }
 
+            timeUtc = TimeZoneUtil.ConvertTime(timeUtc, this.TimeZone); //apply the timezone
             return !(IsDayExcluded(timeUtc.DayOfWeek));
         }
 
@@ -199,13 +242,16 @@ namespace Quartz.Impl.Calendar
                 timeUtc = baseTime;
             }
 
-            // Get timestamp for 00:00:00
-            DateTimeOffset d = new DateTimeOffset(timeUtc.Date, TimeSpan.Zero);
+            //apply the timezone
+            timeUtc = TimeZoneUtil.ConvertTime(timeUtc, this.TimeZone);
+
+            // Get timestamp for 00:00:00, in the correct timezone offset
+            DateTimeOffset d = new DateTimeOffset(timeUtc.Date, timeUtc.Offset);
 
             if (!IsDayExcluded(d.DayOfWeek))
             {
-                return timeUtc;
-            } // return the original value
+                return d;
+            } // return the original value with the correct offset time.
 
             while (IsDayExcluded(d.DayOfWeek))
             {
@@ -228,32 +274,34 @@ namespace Quartz.Impl.Calendar
         {
             int baseHash = 0;
             if (GetBaseCalendar() != null)
+            {
                 baseHash = GetBaseCalendar().GetHashCode();
+            }
 
-            return DaysExcluded.GetHashCode() + 5 * baseHash;
+            return DaysExcluded.GetHashCode() + 5*baseHash;
         }
 
         public bool Equals(WeeklyCalendar obj)
         {
             if (obj == null)
+            {
                 return false;
-            bool baseEqual = GetBaseCalendar() != null ?
-                             GetBaseCalendar().Equals(obj.GetBaseCalendar()) : true;
+            }
+            bool baseEqual = GetBaseCalendar() == null || GetBaseCalendar().Equals(obj.GetBaseCalendar());
 
-
-            return baseEqual && (ArraysEqualElementsOnEqualPlaces(obj.DaysExcluded,DaysExcluded));
-
+            return baseEqual && (ArraysEqualElementsOnEqualPlaces(obj.DaysExcluded, DaysExcluded));
         }
-
 
         public override bool Equals(object obj)
         {
             if ((obj == null) || !(obj is WeeklyCalendar))
+            {
                 return false;
+            }
             else
-                return Equals((WeeklyCalendar)obj);
-
-
+            {
+                return Equals((WeeklyCalendar) obj);
+            }
         }
     }
 }

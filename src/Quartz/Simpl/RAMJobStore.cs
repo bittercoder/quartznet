@@ -63,7 +63,6 @@ namespace Quartz.Simpl
 		
 		private readonly ILog log;
 
-
         /// <summary>
         /// Initializes a new instance of the <see cref="RAMJobStore"/> class.
         /// </summary>
@@ -121,6 +120,24 @@ namespace Quartz.Simpl
 		{
 			// nothing to do
 		}
+
+	    /// <summary>
+	    /// Called by the QuartzScheduler to inform the JobStore that
+	    /// the scheduler has been paused.
+	    /// </summary>
+	    public void SchedulerPaused()
+        {
+            // nothing to do
+        }
+
+	    /// <summary>
+	    /// Called by the QuartzScheduler to inform the JobStore that
+	    /// the scheduler has resumed after being paused.
+	    /// </summary>
+	    public void SchedulerResumed()
+        {
+            // nothing to do
+        }
 
 		/// <summary>
 		/// Called by the QuartzScheduler to inform the <see cref="IJobStore" /> that
@@ -337,7 +354,7 @@ namespace Quartz.Simpl
 	        return allFound;
 	    }
 
-	    public void StoreJobsAndTriggers(IDictionary<IJobDetail, IList<ITrigger>> triggersAndJobs, bool replace)
+	    public void StoreJobsAndTriggers(IDictionary<IJobDetail, Collection.ISet<ITrigger>> triggersAndJobs, bool replace)
 	    {
 	        lock (lockObject)
 	        {
@@ -614,14 +631,12 @@ namespace Quartz.Simpl
             }
 		}
 
-	    /**
-         * Determine whether a <see cref="IJob"/> with the given identifier already 
-         * exists within the scheduler.
-         * 
-         * @param jobKey the identifier to check for
-         * @return true if a Job exists with the given identifier
-         * @throws SchedulerException 
-         */
+	    /// <summary>
+	    /// Determine whether a <see cref="IJob"/> with the given identifier already 
+	    /// exists within the scheduler.
+	    /// </summary>
+	    /// <param name="jobKey">the identifier to check for</param>
+	    /// <returns>true if a Job exists with the given identifier</returns>
 	    public bool CheckExists(JobKey jobKey)
 	    {
 	        lock (lockObject)
@@ -630,14 +645,12 @@ namespace Quartz.Simpl
 	        }
 	    }
 
-	    /**
-         * Determine whether a <see cref="ITrigger" /> with the given identifier already 
-         * exists within the scheduler.
-         * 
-         * @param triggerKey the identifier to check for
-         * @return true if a Trigger exists with the given identifier
-         * @throws SchedulerException 
-         */
+	    /// <summary>
+	    /// Determine whether a <see cref="ITrigger" /> with the given identifier already 
+        /// exists within the scheduler.
+	    /// </summary>
+        /// <param name="triggerKey">triggerKey the identifier to check for</param>
+        /// <returns>true if a Trigger exists with the given identifier</returns>
 	    public bool CheckExists(TriggerKey triggerKey)
 	    {
 	        lock (lockObject)
@@ -725,22 +738,21 @@ namespace Quartz.Simpl
 
 			    if (obj != null && updateTriggers)
 			    {
-					List<TriggerWrapper> trigs = GetTriggerWrappersForCalendar(name);
-					for (int i = 0; i < trigs.Count; ++i)
-					{
-						TriggerWrapper tw = trigs[i];
-						IOperableTrigger trig = tw.trigger;
-                        bool removed = timeTriggers.Remove(tw);
+			        List<TriggerWrapper> trigs = GetTriggerWrappersForCalendar(name);
+			        foreach (TriggerWrapper tw in trigs)
+			        {
+			            IOperableTrigger trig = tw.trigger;
+			            bool removed = timeTriggers.Remove(tw);
 
-						trig.UpdateWithNewCalendar(calendar, MisfireThreshold);
+			            trig.UpdateWithNewCalendar(calendar, MisfireThreshold);
 
-						if (removed)
-						{
-							timeTriggers.Add(tw);
-						}
-					}
-				}
-			}
+			            if (removed)
+			            {
+			                timeTriggers.Add(tw);
+			            }
+			        }
+			    }
+            }
 		}
 
 		/// <summary>
@@ -903,7 +915,7 @@ namespace Quartz.Simpl
 		{
             lock (lockObject)
             {
-                return new List<string>(calendarsByName.Keys).ToArray();
+                return new List<string>(calendarsByName.Keys);
             }
 		}
 
@@ -969,7 +981,7 @@ namespace Quartz.Simpl
 		{
             lock (lockObject)
 			{
-			    return  new List<string>(jobsByGroup.Keys).ToArray();
+			    return  new List<string>(jobsByGroup.Keys);
 			}
 		}
 
@@ -980,7 +992,7 @@ namespace Quartz.Simpl
 		{
             lock (lockObject)
             {
-                return new List<string>(triggersByGroup.Keys).ToArray();
+                return new List<string>(triggersByGroup.Keys);
             }
 		}
 
@@ -1096,7 +1108,7 @@ namespace Quartz.Simpl
 		/// paused.
 		/// </para>
 		/// </summary>
-		public virtual IList<string> PauseTriggers(GroupMatcher<TriggerKey> matcher)
+		public virtual Collection.ISet<string> PauseTriggers(GroupMatcher<TriggerKey> matcher)
 		{
 		    IList<string> pausedGroups;
 
@@ -1136,7 +1148,7 @@ namespace Quartz.Simpl
 		            }
 		        }
 		    }
-		    return pausedGroups;
+		    return new Collection.HashSet<string>(pausedGroups);
 		}
 
 		/// <summary> 
@@ -1179,16 +1191,16 @@ namespace Quartz.Simpl
 		        }
 		        else
 		        {
-		                foreach (String group in jobsByGroup.Keys)
+		            foreach (string group in jobsByGroup.Keys)
+		            {
+		                if (op.Evaluate(group, matcher.CompareToValue))
 		                {
-		                    if (op.Evaluate(group, matcher.CompareToValue))
+		                    if (pausedJobGroups.Add(group))
 		                    {
-		                        if (pausedJobGroups.Add(group))
-		                        {
-		                            pausedGroups.Add(group);
-		                        }
+		                        pausedGroups.Add(group);
 		                    }
 		                }
+		            }
 		        }
 
 		        foreach (string groupName in  pausedGroups)
@@ -1405,7 +1417,7 @@ namespace Quartz.Simpl
 		/// </summary>
 		/// <param name="tw">The trigger wrapper.</param>
 		/// <returns></returns>
-		protected internal virtual bool ApplyMisfire(TriggerWrapper tw)
+		protected virtual bool ApplyMisfire(TriggerWrapper tw)
 		{
             DateTimeOffset misfireTime = SystemTime.UtcNow();
 			if (MisfireThreshold > TimeSpan.Zero)
@@ -1452,55 +1464,106 @@ namespace Quartz.Simpl
 		/// by the calling scheduler.
 		/// </summary>
 		/// <seealso cref="ITrigger" />
-        public virtual IList<IOperableTrigger> AcquireNextTriggers(DateTimeOffset noLaterThan, int maxCount, TimeSpan timeWindow)
+		public virtual IList<IOperableTrigger> AcquireNextTriggers(DateTimeOffset noLaterThan, int maxCount, TimeSpan timeWindow)
 		{
-			lock (lockObject)
-			{
-                List<IOperableTrigger> result = new List<IOperableTrigger>();
+		    lock (lockObject)
+		    {
+		        List<IOperableTrigger> result = new List<IOperableTrigger>();
+		        Collection.ISet<JobKey> acquiredJobKeysForNoConcurrentExec = new Collection.HashSet<JobKey>();
+		        Collection.ISet<TriggerWrapper> excludedTriggers = new Collection.HashSet<TriggerWrapper>();
+                DateTimeOffset? firstAcquiredTriggerFireTime = null;
 
-                while (true)
-                {
-                    TriggerWrapper tw;
+		        // return empty list if store has no triggers.
+		        if (timeTriggers.Count == 0)
+		        {
+		            return result;
+		        }
 
-                    tw = timeTriggers.First();
-                    if (tw == null) return result;
-                    if (!timeTriggers.Remove(tw))
-                    {
-                        return result;
-                    }
+		        while (true)
+		        {
+		            TriggerWrapper tw;
 
-                    if (tw.trigger.GetNextFireTimeUtc() == null)
-                    {
-                        continue;
-                    }
+		            tw = timeTriggers.First();
+		            if (tw == null)
+		            {
+		                break;
+		            }
+		            if (!timeTriggers.Remove(tw))
+		            {
+		                break;
+		            }
 
-                    if (ApplyMisfire(tw))
-                    {
-                        if (tw.trigger.GetNextFireTimeUtc() != null)
-                        {
-                            timeTriggers.Add(tw);
-                        }
-                        continue;
-                    }
+		            if (tw.trigger.GetNextFireTimeUtc() == null)
+		            {
+		                continue;
+		            }
 
-                    if (tw.trigger.GetNextFireTimeUtc() > noLaterThan + timeWindow)
+                    // it's possible that we've selected triggers way outside of the max fire ahead time for batches 
+                    // (up to idleWaitTime + fireAheadTime) so we need to make sure not to include such triggers.  
+                    // So we select from the first next trigger to fire up until the max fire ahead time after that...
+                    // which will perfectly honor the fireAheadTime window because the no firing will occur until
+                    // the first acquired trigger's fire time arrives.
+                    if (firstAcquiredTriggerFireTime != null && tw.trigger.GetNextFireTimeUtc() > (firstAcquiredTriggerFireTime.Value + timeWindow))
                     {
                         timeTriggers.Add(tw);
-                        return result;
+                        break;
                     }
 
-                    tw.state = InternalTriggerState.Acquired;
+		            if (ApplyMisfire(tw))
+		            {
+		                if (tw.trigger.GetNextFireTimeUtc() != null)
+		                {
+		                    timeTriggers.Add(tw);
+		                }
+		                continue;
+		            }
 
-                    tw.trigger.FireInstanceId = GetFiredTriggerRecordId();
-                    IOperableTrigger trig = (IOperableTrigger)tw.trigger.Clone();
-                    result.Add(trig);
+		            if (tw.trigger.GetNextFireTimeUtc() > noLaterThan + timeWindow)
+		            {
+		                timeTriggers.Add(tw);
+		                break;
+		            }
 
-                    if (result.Count == maxCount)
+		            // If trigger's job is set as @DisallowConcurrentExecution, and it has already been added to result, then
+		            // put it back into the timeTriggers set and continue to search for next trigger.
+		            JobKey jobKey = tw.trigger.JobKey;
+		            IJobDetail job = jobsByKey[tw.trigger.JobKey].jobDetail;
+		            if (job.ConcurrentExecutionDisallowed)
+		            {
+		                if (acquiredJobKeysForNoConcurrentExec.Contains(jobKey))
+		                {
+		                    excludedTriggers.Add(tw);
+		                    continue; // go to next trigger in store.
+		                }
+		                else
+		                {
+		                    acquiredJobKeysForNoConcurrentExec.Add(jobKey);
+		                }
+		            }
+
+		            tw.state = InternalTriggerState.Acquired;
+		            tw.trigger.FireInstanceId = GetFiredTriggerRecordId();
+		            IOperableTrigger trig = (IOperableTrigger) tw.trigger.Clone();
+		            result.Add(trig);
+
+                    if (firstAcquiredTriggerFireTime == null)
                     {
-                        return result;
+                        firstAcquiredTriggerFireTime = tw.trigger.GetNextFireTimeUtc();
                     }
-                }
-            }
+
+		            if (result.Count == maxCount)
+		            {
+		                break;
+		            }
+		        }
+
+		        // If we did excluded triggers to prevent ACQUIRE state due to DisallowConcurrentExecution, we need to add them back to store.
+		        if (excludedTriggers.Count > 0)
+		        {
+		            timeTriggers.AddAll(excludedTriggers);
+		        }
+		        return result;
+		    }
 		}
 
 		/// <summary>
@@ -1573,7 +1636,7 @@ namespace Quartz.Simpl
 
 		            IJobDetail job = bndle.JobDetail;
 
-                    if (job.ConcurrentExectionDisallowed)
+                    if (job.ConcurrentExecutionDisallowed)
 		            {
 		                List<TriggerWrapper> trigs = GetTriggerWrappersForJob(job.Key);
 		                foreach (TriggerWrapper ttw in trigs)
@@ -1639,7 +1702,7 @@ namespace Quartz.Simpl
                         }
                         ((JobDetailImpl) jd).JobDataMap = newData;
                     }
-                    if (jd.ConcurrentExectionDisallowed)
+                    if (jd.ConcurrentExecutionDisallowed)
                     {
 				        blockedJobs.Remove(jd.Key);
 						List<TriggerWrapper> trigs = GetTriggerWrappersForJob(jd.Key);
@@ -1755,7 +1818,7 @@ namespace Quartz.Simpl
 	    /// <summary>
 		/// Sets the state of all triggers of job to specified state.
 		/// </summary>
-		protected internal virtual void SetAllTriggersOfJobToState(JobKey jobKey, InternalTriggerState state)
+		protected virtual void SetAllTriggersOfJobToState(JobKey jobKey, InternalTriggerState state)
 		{
 			List<TriggerWrapper> tws = GetTriggerWrappersForJob(jobKey);
 			foreach (TriggerWrapper tw in tws)

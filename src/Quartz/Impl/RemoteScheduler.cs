@@ -44,14 +44,16 @@ namespace Quartz.Impl
     {
         private IRemotableQuartzScheduler rsched;
         private readonly string schedId;
+        private readonly IRemotableSchedulerProxyFactory proxyFactory;
 
         /// <summary>
         /// Construct a <see cref="RemoteScheduler" /> instance to proxy the given
         /// RemoteableQuartzScheduler instance.
         /// </summary>
-        public RemoteScheduler(string schedId)
+        public RemoteScheduler(string schedId, IRemotableSchedulerProxyFactory proxyFactory)
         {
             this.schedId = schedId;
+            this.proxyFactory = proxyFactory;
         }
 
         /// <summary>
@@ -62,7 +64,7 @@ namespace Quartz.Impl
         /// <returns></returns>
         public virtual bool IsJobGroupPaused(string groupName)
         {
-            return GetRemoteScheduler().IsJobGroupPaused(groupName);
+            return CallInGuard(x => x.IsJobGroupPaused(groupName));
         }
 
         /// <summary>
@@ -73,7 +75,7 @@ namespace Quartz.Impl
         /// <returns></returns>
         public virtual bool IsTriggerGroupPaused(string groupName)
         {
-            return GetRemoteScheduler().IsTriggerGroupPaused(groupName);
+            return CallInGuard(x => x.IsTriggerGroupPaused(groupName));
         }
 
         /// <summary>
@@ -81,17 +83,7 @@ namespace Quartz.Impl
         /// </summary>
         public virtual string SchedulerName
         {
-            get
-            {
-                try
-                {
-                    return GetRemoteScheduler().SchedulerName;
-                }
-                catch (RemotingException re)
-                {
-                    throw InvalidateHandleCreateException("Error communicating with remote scheduler.", re);
-                }
-            }
+            get { return CallInGuard(x => x.SchedulerName); }
         }
 
         /// <summary>
@@ -99,24 +91,8 @@ namespace Quartz.Impl
         /// </summary>
         public virtual string SchedulerInstanceId
         {
-            get
-            {
-                try
-                {
-                    return GetRemoteScheduler().SchedulerInstanceId;
-                }
-                catch (RemotingException re)
-                {
-                    throw InvalidateHandleCreateException("Error communicating with remote scheduler.", re);
-                }
-            }
+            get { return CallInGuard(x => x.SchedulerInstanceId); }
         }
-
-        /// <summary>
-        /// Gets or sets the remote scheduler address.
-        /// </summary>
-        /// <value>The remote scheduler address.</value>
-        public virtual string RemoteSchedulerAddress { get; set; }
 
         /// <summary>
         /// Get a <see cref="SchedulerMetaData"/> object describiing the settings
@@ -129,19 +105,9 @@ namespace Quartz.Impl
         /// <returns></returns>
         public virtual SchedulerMetaData GetMetaData()
         {
-            try
-            {
-                IRemotableQuartzScheduler sched = GetRemoteScheduler();
-
-                return
-                    new SchedulerMetaData(SchedulerName, SchedulerInstanceId, GetType(), true, IsStarted, InStandbyMode,
-                                          IsShutdown, sched.RunningSince, sched.NumJobsExecuted, sched.JobStoreClass,
-                                          sched.SupportsPersistence, sched.Clustered, sched.ThreadPoolClass, sched.ThreadPoolSize, sched.Version);
-            }
-            catch (RemotingException re)
-            {
-                throw InvalidateHandleCreateException("Error communicating with remote scheduler.", re);
-            }
+            return CallInGuard(x => new SchedulerMetaData(SchedulerName, SchedulerInstanceId, GetType(), true, IsStarted, InStandbyMode,
+                                                          IsShutdown, x.RunningSince, x.NumJobsExecuted, x.JobStoreClass,
+                                                          x.SupportsPersistence, x.Clustered, x.ThreadPoolClass, x.ThreadPoolSize, x.Version));
         }
 
         /// <summary> 
@@ -149,17 +115,7 @@ namespace Quartz.Impl
         /// </summary>
         public virtual SchedulerContext Context
         {
-            get
-            {
-                try
-                {
-                    return GetRemoteScheduler().SchedulerContext;
-                }
-                catch (RemotingException re)
-                {
-                    throw InvalidateHandleCreateException("Error communicating with remote scheduler.", re);
-                }
-            }
+            get { return CallInGuard(x => x.SchedulerContext); }
         }
 
         /// <summary>
@@ -167,17 +123,7 @@ namespace Quartz.Impl
         /// </summary>
         public virtual bool InStandbyMode
         {
-            get
-            {
-                try
-                {
-                    return GetRemoteScheduler().InStandbyMode;
-                }
-                catch (RemotingException re)
-                {
-                    throw InvalidateHandleCreateException("Error communicating with remote scheduler.", re);
-                }
-            }
+            get { return CallInGuard(x => x.InStandbyMode); }
         }
 
         /// <summary>
@@ -185,17 +131,7 @@ namespace Quartz.Impl
         /// </summary>
         public virtual bool IsShutdown
         {
-            get
-            {
-                try
-                {
-                    return GetRemoteScheduler().IsShutdown;
-                }
-                catch (RemotingException re)
-                {
-                    throw InvalidateHandleCreateException("Error communicating with remote scheduler.", re);
-                }
-            }
+            get { return CallInGuard(x => x.IsShutdown); }
         }
 
         /// <summary>
@@ -203,14 +139,7 @@ namespace Quartz.Impl
         /// </summary>
         public virtual IList<IJobExecutionContext> GetCurrentlyExecutingJobs()
         {
-            try
-            {
-                return GetRemoteScheduler().CurrentlyExecutingJobs;
-            }
-            catch (RemotingException re)
-            {
-                throw InvalidateHandleCreateException("Error communicating with remote scheduler.", re);
-            }
+            return CallInGuard(x => x.CurrentlyExecutingJobs);
         }
 
         /// <summary>
@@ -218,14 +147,7 @@ namespace Quartz.Impl
         /// </summary>
         public virtual IList<string> GetJobGroupNames()
         {
-            try
-            {
-                return GetRemoteScheduler().GetJobGroupNames();
-            }
-            catch (RemotingException re)
-            {
-                throw InvalidateHandleCreateException("Error communicating with remote scheduler.", re);
-            }
+            return CallInGuard(x => x.GetJobGroupNames());
         }
 
         /// <summary>
@@ -233,14 +155,7 @@ namespace Quartz.Impl
         /// </summary>
         public virtual IList<string> GetTriggerGroupNames()
         {
-            try
-            {
-                return GetRemoteScheduler().GetTriggerGroupNames();
-            }
-            catch (RemotingException re)
-            {
-                throw InvalidateHandleCreateException("Error communicating with remote scheduler.", re);
-            }
+            return CallInGuard(x => x.GetTriggerGroupNames());
         }
 
         /// <summary>
@@ -249,14 +164,7 @@ namespace Quartz.Impl
         /// <value></value>
         public virtual Collection.ISet<string> GetPausedTriggerGroups()
         {
-            try
-            {
-                return GetRemoteScheduler().GetPausedTriggerGroups();
-            }
-            catch (RemotingException re)
-            {
-                throw InvalidateHandleCreateException("Error communicating with remote scheduler.", re);
-            }
+            return CallInGuard(x => x.GetPausedTriggerGroups());
         }
 
         /// <summary>
@@ -276,50 +184,12 @@ namespace Quartz.Impl
             set { throw new SchedulerException("Operation not supported for remote schedulers."); }
         }
 
-
-        protected virtual IRemotableQuartzScheduler GetRemoteScheduler()
-        {
-            if (rsched != null)
-            {
-                return rsched;
-            }
-
-            try
-            {
-                rsched =
-                    (IRemotableQuartzScheduler)
-                    Activator.GetObject(typeof (IRemotableQuartzScheduler), RemoteSchedulerAddress);
-            }
-            catch (Exception e)
-            {
-                SchedulerException initException =
-                    new SchedulerException(string.Format(CultureInfo.InvariantCulture, "Could not get handle to remote scheduler: {0}", e.Message), e);
-                throw initException;
-            }
-
-            return rsched;
-        }
-
-        protected virtual SchedulerException InvalidateHandleCreateException(string msg, Exception cause)
-        {
-            rsched = null;
-            SchedulerException ex = new SchedulerException(msg, cause);
-            return ex;
-        }
-
         /// <summary> 
         /// Calls the equivalent method on the 'proxied' <see cref="QuartzScheduler" />.
         /// </summary>
         public virtual void Start()
         {
-            try
-            {
-                GetRemoteScheduler().Start();
-            }
-            catch (RemotingException re)
-            {
-                throw InvalidateHandleCreateException("Error communicating with remote scheduler.", re);
-            }
+            CallInGuard(x => x.Start());
         }
 
         /// <summary> 
@@ -327,14 +197,7 @@ namespace Quartz.Impl
         /// </summary>
         public void StartDelayed(TimeSpan delay)
         {
-            try
-            {
-                GetRemoteScheduler().StartDelayed(delay);
-            }
-            catch (RemotingException re)
-            {
-                throw InvalidateHandleCreateException("Error communicating with remote scheduler.", re);
-            }
+            CallInGuard(x => x.StartDelayed(delay));
         }
 
         /// <summary>
@@ -352,18 +215,7 @@ namespace Quartz.Impl
         /// <seealso cref="InStandbyMode"/>
         public virtual bool IsStarted
         {
-            get
-            {
-                try
-                {
-                    return GetRemoteScheduler().RunningSince.HasValue;
-                }
-                catch (Exception re)
-                {
-                    throw InvalidateHandleCreateException(
-                        "Error communicating with remote scheduler.", re);
-                }
-            }
+            get { return CallInGuard(x => x.RunningSince.HasValue); }
         }
 
         /// <summary>
@@ -371,16 +223,8 @@ namespace Quartz.Impl
         /// </summary>
         public virtual void Standby()
         {
-            try
-            {
-                GetRemoteScheduler().Standby();
-            }
-            catch (RemotingException re)
-            {
-                throw InvalidateHandleCreateException("Error communicating with remote scheduler.", re);
-            }
+            CallInGuard(x => x.Standby());
         }
-
 
         /// <summary>
         /// Calls the equivalent method on the 'proxied' <see cref="QuartzScheduler" />.
@@ -404,14 +248,7 @@ namespace Quartz.Impl
         /// </summary>
         public virtual void Shutdown(bool waitForJobsToComplete)
         {
-            try
-            {
-                GetRemoteScheduler().Shutdown(waitForJobsToComplete);
-            }
-            catch (RemotingException re)
-            {
-                throw InvalidateHandleCreateException("Error communicating with remote scheduler.", re);
-            }
+            CallInGuard(x => x.Shutdown(waitForJobsToComplete));
         }
 
         /// <summary>
@@ -419,14 +256,7 @@ namespace Quartz.Impl
         /// </summary>
         public virtual DateTimeOffset ScheduleJob(IJobDetail jobDetail, ITrigger trigger)
         {
-            try
-            {
-                return GetRemoteScheduler().ScheduleJob(jobDetail, trigger);
-            }
-            catch (RemotingException re)
-            {
-                throw InvalidateHandleCreateException("Error communicating with remote scheduler.", re);
-            }
+            return CallInGuard(x => x.ScheduleJob(jobDetail, trigger));
         }
 
         /// <summary>
@@ -434,14 +264,7 @@ namespace Quartz.Impl
         /// </summary>
         public virtual DateTimeOffset ScheduleJob(ITrigger trigger)
         {
-            try
-            {
-                return GetRemoteScheduler().ScheduleJob(trigger);
-            }
-            catch (RemotingException re)
-            {
-                throw InvalidateHandleCreateException("Error communicating with remote scheduler.", re);
-            }
+            return CallInGuard(x => x.ScheduleJob(trigger));
         }
 
         /// <summary>
@@ -449,50 +272,27 @@ namespace Quartz.Impl
         /// </summary>
         public virtual void AddJob(IJobDetail jobDetail, bool replace)
         {
-            try
-            {
-                GetRemoteScheduler().AddJob(jobDetail, replace);
-            }
-            catch (RemotingException re)
-            {
-                throw InvalidateHandleCreateException("Error communicating with remote scheduler.", re);
-            }
+            CallInGuard(x => x.AddJob(jobDetail, replace));
         }
 
         public virtual bool DeleteJobs(IList<JobKey> jobKeys)
         {
-            try
-            {
-                return GetRemoteScheduler().DeleteJobs(jobKeys);
-            }
-            catch (RemotingException re)
-            {
-                throw InvalidateHandleCreateException("Error communicating with remote scheduler.", re);
-            }
+            return CallInGuard(x => x.DeleteJobs(jobKeys));
         }
 
-        public virtual void ScheduleJobs(IDictionary<IJobDetail, IList<ITrigger>> triggersAndJobs, bool replace)
+        public virtual void ScheduleJobs(IDictionary<IJobDetail, Collection.ISet<ITrigger>> triggersAndJobs, bool replace)
         {
-            try
-            {
-                GetRemoteScheduler().ScheduleJobs(triggersAndJobs, replace);
-            }
-            catch (RemotingException re)
-            {
-                throw InvalidateHandleCreateException("Error communicating with remote scheduler.", re);
-            }
+            CallInGuard(x => x.ScheduleJobs(triggersAndJobs, replace));
+        }
+
+        public void ScheduleJob(IJobDetail jobDetail, Collection.ISet<ITrigger> triggersForJob, bool replace)
+        {
+            CallInGuard(x => x.ScheduleJob(jobDetail, triggersForJob, replace));
         }
 
         public virtual bool UnscheduleJobs(IList<TriggerKey> triggerKeys)
         {
-            try
-            {
-                return GetRemoteScheduler().UnscheduleJobs(triggerKeys);
-            }
-            catch (RemotingException re)
-            {
-                throw InvalidateHandleCreateException("Error communicating with remote scheduler.", re);
-            }
+            return CallInGuard(x => x.UnscheduleJobs(triggerKeys));
         }
 
         /// <summary>
@@ -500,14 +300,7 @@ namespace Quartz.Impl
         /// </summary>
         public virtual bool DeleteJob(JobKey jobKey)
         {
-            try
-            {
-                return GetRemoteScheduler().DeleteJob(jobKey);
-            }
-            catch (RemotingException re)
-            {
-                throw InvalidateHandleCreateException("Error communicating with remote scheduler.", re);
-            }
+            return CallInGuard(x => x.DeleteJob(jobKey));
         }
 
         /// <summary>
@@ -515,14 +308,7 @@ namespace Quartz.Impl
         /// </summary>
         public virtual bool UnscheduleJob(TriggerKey triggerKey)
         {
-            try
-            {
-                return GetRemoteScheduler().UnscheduleJob(triggerKey);
-            }
-            catch (RemotingException re)
-            {
-                throw InvalidateHandleCreateException("Error communicating with remote scheduler.", re);
-            }
+            return CallInGuard(x => x.UnscheduleJob(triggerKey));
         }
 
         /// <summary>
@@ -530,14 +316,7 @@ namespace Quartz.Impl
         /// </summary>
         public virtual DateTimeOffset? RescheduleJob(TriggerKey triggerKey, ITrigger newTrigger)
         {
-            try
-            {
-                return GetRemoteScheduler().RescheduleJob(triggerKey, newTrigger);
-            }
-            catch (RemotingException re)
-            {
-                throw InvalidateHandleCreateException("Error communicating with remote scheduler.", re);
-            }
+            return CallInGuard(x => x.RescheduleJob(triggerKey, newTrigger));
         }
 
         /// <summary>
@@ -553,14 +332,7 @@ namespace Quartz.Impl
         /// </summary>
         public virtual void TriggerJob(JobKey jobKey, JobDataMap data)
         {
-            try
-            {
-                GetRemoteScheduler().TriggerJob(jobKey, data);
-            }
-            catch (RemotingException re)
-            {
-                throw InvalidateHandleCreateException("Error communicating with remote scheduler.", re);
-            }
+            CallInGuard(x => x.TriggerJob(jobKey, data));
         }
 
         /// <summary>
@@ -568,14 +340,7 @@ namespace Quartz.Impl
         /// </summary>
         public virtual void PauseTrigger(TriggerKey triggerKey)
         {
-            try
-            {
-                GetRemoteScheduler().PauseTrigger(triggerKey);
-            }
-            catch (RemotingException re)
-            {
-                throw InvalidateHandleCreateException("Error communicating with remote scheduler.", re);
-            }
+            CallInGuard(x => x.PauseTrigger(triggerKey));
         }
 
         /// <summary>
@@ -583,14 +348,7 @@ namespace Quartz.Impl
         /// </summary>
         public virtual void PauseTriggers(GroupMatcher<TriggerKey> matcher)
         {
-            try
-            {
-                GetRemoteScheduler().PauseTriggers(matcher);
-            }
-            catch (RemotingException re)
-            {
-                throw InvalidateHandleCreateException("Error communicating with remote scheduler.", re);
-            }
+            CallInGuard(x => x.PauseTriggers(matcher));
         }
 
         /// <summary>
@@ -598,30 +356,15 @@ namespace Quartz.Impl
         /// </summary>
         public virtual void PauseJob(JobKey jobKey)
         {
-            try
-            {
-                GetRemoteScheduler().PauseJob(jobKey);
-            }
-            catch (RemotingException re)
-            {
-                throw InvalidateHandleCreateException("Error communicating with remote scheduler.", re);
-            }
+            CallInGuard(x => x.PauseJob(jobKey));
         }
-
 
         /// <summary>
         /// Calls the equivalent method on the 'proxied' <see cref="QuartzScheduler" />.
         /// </summary>
         public virtual void PauseJobs(GroupMatcher<JobKey> matcher)
         {
-            try
-            {
-                GetRemoteScheduler().PauseJobs(matcher);
-            }
-            catch (RemotingException re)
-            {
-                throw InvalidateHandleCreateException("Error communicating with remote scheduler.", re);
-            }
+            CallInGuard(x => x.PauseJobs(matcher));
         }
 
         /// <summary>
@@ -629,14 +372,7 @@ namespace Quartz.Impl
         /// </summary>
         public virtual void ResumeTrigger(TriggerKey triggerKey)
         {
-            try
-            {
-                GetRemoteScheduler().ResumeTrigger(triggerKey);
-            }
-            catch (RemotingException re)
-            {
-                throw InvalidateHandleCreateException("Error communicating with remote scheduler.", re);
-            }
+            CallInGuard(x => x.ResumeTrigger(triggerKey));
         }
 
         /// <summary>
@@ -644,62 +380,31 @@ namespace Quartz.Impl
         /// </summary>
         public virtual void ResumeTriggers(GroupMatcher<TriggerKey> matcher)
         {
-            try
-            {
-                GetRemoteScheduler().ResumeTriggers(matcher);
-            }
-            catch (RemotingException re)
-            {
-                throw InvalidateHandleCreateException("Error communicating with remote scheduler.", re);
-            }
+            CallInGuard(x => x.ResumeTriggers(matcher));
         }
-
 
         /// <summary>
         /// Calls the equivalent method on the 'proxied' <see cref="QuartzScheduler" />.
         /// </summary>
         public virtual void ResumeJob(JobKey jobKey)
         {
-            try
-            {
-                GetRemoteScheduler().ResumeJob(jobKey);
-            }
-            catch (RemotingException re)
-            {
-                throw InvalidateHandleCreateException("Error communicating with remote scheduler.", re);
-            }
+            CallInGuard(x => x.ResumeJob(jobKey));
         }
-
 
         /// <summary>
         /// Calls the equivalent method on the 'proxied' <see cref="QuartzScheduler" />.
         /// </summary>
         public virtual void ResumeJobs(GroupMatcher<JobKey> matcher)
         {
-            try
-            {
-                GetRemoteScheduler().ResumeJobs(matcher);
-            }
-            catch (RemotingException re)
-            {
-                throw InvalidateHandleCreateException("Error communicating with remote scheduler.", re);
-            }
+            CallInGuard(x => x.ResumeJobs(matcher));
         }
-
 
         /// <summary>
         /// Calls the equivalent method on the 'proxied' <see cref="QuartzScheduler" />.
         /// </summary>
         public virtual void PauseAll()
         {
-            try
-            {
-                GetRemoteScheduler().PauseAll();
-            }
-            catch (RemotingException re)
-            {
-                throw InvalidateHandleCreateException("Error communicating with remote scheduler.", re);
-            }
+            CallInGuard(x => x.PauseAll());
         }
 
         /// <summary>
@@ -707,14 +412,7 @@ namespace Quartz.Impl
         /// </summary>
         public virtual void ResumeAll()
         {
-            try
-            {
-                GetRemoteScheduler().ResumeAll();
-            }
-            catch (RemotingException re)
-            {
-                throw InvalidateHandleCreateException("Error communicating with remote scheduler.", re);
-            }
+            CallInGuard(x => x.ResumeAll());
         }
 
         /// <summary>
@@ -722,30 +420,15 @@ namespace Quartz.Impl
         /// </summary>
         public virtual Collection.ISet<JobKey> GetJobKeys(GroupMatcher<JobKey> matcher)
         {
-            try
-            {
-                return GetRemoteScheduler().GetJobKeys(matcher);
-            }
-            catch (RemotingException re)
-            {
-                throw InvalidateHandleCreateException("Error communicating with remote scheduler.", re);
-            }
+            return CallInGuard(x => x.GetJobKeys(matcher));
         }
-
 
         /// <summary>
         /// Calls the equivalent method on the 'proxied' <see cref="QuartzScheduler" />.
         /// </summary>
         public virtual IList<ITrigger> GetTriggersOfJob(JobKey jobKey)
         {
-            try
-            {
-                return GetRemoteScheduler().GetTriggersOfJob(jobKey);
-            }
-            catch (RemotingException re)
-            {
-                throw InvalidateHandleCreateException("Error communicating with remote scheduler.", re);
-            }
+            return CallInGuard(x => x.GetTriggersOfJob(jobKey));
         }
 
         /// <summary>
@@ -753,14 +436,7 @@ namespace Quartz.Impl
         /// </summary>
         public virtual Collection.ISet<TriggerKey> GetTriggerKeys(GroupMatcher<TriggerKey> matcher)
         {
-            try
-            {
-                return GetRemoteScheduler().GetTriggerKeys(matcher);
-            }
-            catch (RemotingException re)
-            {
-                throw InvalidateHandleCreateException("Error communicating with remote scheduler.", re);
-            }
+            return CallInGuard(x => x.GetTriggerKeys(matcher));
         }
 
         /// <summary>
@@ -768,14 +444,7 @@ namespace Quartz.Impl
         /// </summary>
         public virtual IJobDetail GetJobDetail(JobKey jobKey)
         {
-            try
-            {
-                return GetRemoteScheduler().GetJobDetail(jobKey);
-            }
-            catch (RemotingException re)
-            {
-                throw InvalidateHandleCreateException("Error communicating with remote scheduler.", re);
-            }
+            return CallInGuard(x => x.GetJobDetail(jobKey));
         }
 
         /// <summary>
@@ -783,14 +452,7 @@ namespace Quartz.Impl
         /// </summary>
         public virtual bool CheckExists(JobKey jobKey)
         {
-            try
-            {
-                return GetRemoteScheduler().CheckExists(jobKey);
-            }
-            catch (RemotingException re)
-            {
-                throw InvalidateHandleCreateException("Error communicating with remote scheduler.", re);
-            }
+            return CallInGuard(x => x.CheckExists(jobKey));
         }
 
         /// <summary>
@@ -798,14 +460,7 @@ namespace Quartz.Impl
         /// </summary>
         public virtual bool CheckExists(TriggerKey triggerKey)
         {
-            try
-            {
-                return GetRemoteScheduler().CheckExists(triggerKey);
-            }
-            catch (RemotingException re)
-            {
-                throw InvalidateHandleCreateException("Error communicating with remote scheduler.", re);
-            }
+            return CallInGuard(x => x.CheckExists(triggerKey));
         }
 
         /// <summary>
@@ -813,14 +468,7 @@ namespace Quartz.Impl
         /// </summary>
         public virtual void Clear()
         {
-            try
-            {
-                GetRemoteScheduler().Clear();
-            }
-            catch (RemotingException re)
-            {
-                throw InvalidateHandleCreateException("Error communicating with remote scheduler.", re);
-            }
+            CallInGuard(x => x.Clear());
         }
 
         /// <summary>
@@ -828,30 +476,15 @@ namespace Quartz.Impl
         /// </summary>
         public virtual ITrigger GetTrigger(TriggerKey triggerKey)
         {
-            try
-            {
-                return GetRemoteScheduler().GetTrigger(triggerKey);
-            }
-            catch (RemotingException re)
-            {
-                throw InvalidateHandleCreateException("Error communicating with remote scheduler.", re);
-            }
+            return CallInGuard(x => x.GetTrigger(triggerKey));
         }
-
 
         /// <summary>
         /// Calls the equivalent method on the 'proxied' <see cref="QuartzScheduler" />.
         /// </summary>
         public virtual TriggerState GetTriggerState(TriggerKey triggerKey)
         {
-            try
-            {
-                return GetRemoteScheduler().GetTriggerState(triggerKey);
-            }
-            catch (RemotingException re)
-            {
-                throw InvalidateHandleCreateException("Error communicating with remote scheduler.", re);
-            }
+            return CallInGuard(x => x.GetTriggerState(triggerKey));
         }
 
         /// <summary>
@@ -859,30 +492,15 @@ namespace Quartz.Impl
         /// </summary>
         public virtual void AddCalendar(string calName, ICalendar calendar, bool replace, bool updateTriggers)
         {
-            try
-            {
-                GetRemoteScheduler().AddCalendar(calName, calendar, replace, updateTriggers);
-            }
-            catch (RemotingException re)
-            {
-                throw InvalidateHandleCreateException("Error communicating with remote scheduler.", re);
-            }
+            CallInGuard(x => x.AddCalendar(calName, calendar, replace, updateTriggers));
         }
-
 
         /// <summary>
         /// Calls the equivalent method on the 'proxied' <see cref="QuartzScheduler" />.
         /// </summary>
         public virtual bool DeleteCalendar(string calName)
         {
-            try
-            {
-                return GetRemoteScheduler().DeleteCalendar(calName);
-            }
-            catch (RemotingException re)
-            {
-                throw InvalidateHandleCreateException("Error communicating with remote scheduler.", re);
-            }
+            return CallInGuard(x => x.DeleteCalendar(calName));
         }
 
         /// <summary>
@@ -890,14 +508,7 @@ namespace Quartz.Impl
         /// </summary>
         public virtual ICalendar GetCalendar(string calName)
         {
-            try
-            {
-                return GetRemoteScheduler().GetCalendar(calName);
-            }
-            catch (RemotingException re)
-            {
-                throw InvalidateHandleCreateException("Error communicating with remote scheduler.", re);
-            }
+            return CallInGuard(x => x.GetCalendar(calName));
         }
 
         /// <summary>
@@ -906,22 +517,12 @@ namespace Quartz.Impl
         /// <returns></returns>
         public IList<string> GetCalendarNames()
         {
-            try
-            {
-                return GetRemoteScheduler().GetCalendarNames();
-            }
-            catch (RemotingException re)
-            {
-                throw InvalidateHandleCreateException("Error communicating with remote scheduler.", re);
-            }
+            return CallInGuard(x => x.GetCalendarNames());
         }
 
         public IListenerManager ListenerManager
         {
-            get
-            {
-                throw new SchedulerException("Operation not supported for remote schedulers.");
-            }
+            get { throw new SchedulerException("Operation not supported for remote schedulers."); }
         }
 
         /// <summary>
@@ -935,8 +536,7 @@ namespace Quartz.Impl
             }
             catch (RemotingException re)
             {
-                throw new UnableToInterruptJobException(
-                    InvalidateHandleCreateException("Error communicating with remote scheduler.", re));
+                throw new UnableToInterruptJobException(InvalidateHandleCreateException("Error communicating with remote scheduler.", re));
             }
             catch (SchedulerException se)
             {
@@ -958,6 +558,58 @@ namespace Quartz.Impl
             {
                 throw new UnableToInterruptJobException(se);
             }
+        }
+
+        protected virtual void CallInGuard(Action<IRemotableQuartzScheduler> action)
+        {
+            try
+            {
+                action(GetRemoteScheduler());
+            }
+            catch (RemotingException re)
+            {
+                throw InvalidateHandleCreateException("Error communicating with remote scheduler.", re);
+            }
+        }
+
+        protected virtual T CallInGuard<T>(Func<IRemotableQuartzScheduler, T> func)
+        {
+            try
+            {
+                return func(GetRemoteScheduler());
+            }
+            catch (RemotingException re)
+            {
+                throw InvalidateHandleCreateException("Error communicating with remote scheduler.", re);
+            }
+        }
+
+        protected virtual IRemotableQuartzScheduler GetRemoteScheduler()
+        {
+            if (rsched != null)
+            {
+                return rsched;
+            }
+
+            try
+            {
+                rsched = proxyFactory.GetProxy();
+            }
+            catch (Exception e)
+            {
+                string errorMessage = string.Format(CultureInfo.InvariantCulture, "Could not get handle to remote scheduler: {0}", e.Message);
+                SchedulerException initException = new SchedulerException(errorMessage, e);
+                throw initException;
+            }
+
+            return rsched;
+        }
+
+        protected virtual SchedulerException InvalidateHandleCreateException(string msg, Exception cause)
+        {
+            rsched = null;
+            SchedulerException ex = new SchedulerException(msg, cause);
+            return ex;
         }
     }
 }

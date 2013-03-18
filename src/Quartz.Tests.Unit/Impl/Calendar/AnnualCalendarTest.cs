@@ -33,13 +33,10 @@ namespace Quartz.Tests.Unit.Impl.Calendar
 
         private static readonly string[] Versions = new string[] { "0.6.0" };
 
-        private static readonly TimeZoneInfo TestTimeZone = TimeZoneInfo.Local;
-
         [SetUp]
         public void Setup()
         {
             cal = new AnnualCalendar();
-            cal.TimeZone = TestTimeZone;
         }
     
         [Test]
@@ -84,12 +81,11 @@ namespace Quartz.Tests.Unit.Impl.Calendar
         public void TestExclusionAndNextIncludedTime()
         {
             cal.DaysExcluded = null;
-            DateTimeOffset test = new DateTimeOffset(DateTimeOffset.UtcNow.Date, TimeSpan.Zero);
+            DateTimeOffset test = DateTimeOffset.UtcNow.Date;
             Assert.AreEqual(test, cal.GetNextIncludedTimeUtc(test), "Did not get today as date when nothing was excluded");
 
             cal.SetDayExcluded(test, true);
             Assert.AreEqual(test.AddDays(1), cal.GetNextIncludedTimeUtc(test), "Did not get next day when current day excluded");
-
         }
 
         /// <summary>
@@ -125,6 +121,27 @@ namespace Quartz.Tests.Unit.Impl.Calendar
             annualCalendar.SetDayExcluded(day, false);
 
             Assert.IsFalse(annualCalendar.IsDayExcluded(day), "The day 23 June is not expected to be excluded but it is");
+        }
+
+        [Test]
+        public void TestAnnualCalendarTimeZone()
+        {
+            TimeZoneInfo tz = TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time");
+            AnnualCalendar c = new AnnualCalendar();
+            c.TimeZone = tz;
+
+            DateTimeOffset excludedDay = new DateTimeOffset(2012, 11, 4, 0, 0, 0, TimeSpan.Zero);
+            c.SetDayExcluded(excludedDay, true);
+
+            // 11/5/2012 12:00:00 AM -04:00  translate into 11/4/2012 11:00:00 PM -05:00 (EST)
+            DateTimeOffset date = new DateTimeOffset(2012, 11, 5, 0, 0, 0, TimeSpan.FromHours(-4));
+
+            Assert.IsFalse(c.IsTimeIncluded(date), "date was expected to not be included.");
+            Assert.IsTrue(c.IsTimeIncluded(date.AddDays(1)));
+
+            DateTimeOffset expectedNextAvailable = new DateTimeOffset(2012, 11, 5, 0, 0, 0, TimeSpan.FromHours(-5));
+            DateTimeOffset actualNextAvailable = c.GetNextIncludedTimeUtc(date);
+            Assert.AreEqual(expectedNextAvailable, actualNextAvailable);
         }
 
 

@@ -283,9 +283,14 @@ namespace Quartz.Impl
             return sched.DeleteJobs(jobKeys);
         }
 
-        public void ScheduleJobs(IDictionary<IJobDetail, IList<ITrigger>> triggersAndJobs, bool replace)
+        public void ScheduleJobs(IDictionary<IJobDetail, Collection.ISet<ITrigger>> triggersAndJobs, bool replace)
         {
             sched.ScheduleJobs(triggersAndJobs, replace);
+        }
+
+        public void ScheduleJob(IJobDetail jobDetail, Collection.ISet<ITrigger> triggersForJob, bool replace)
+        {
+            sched.ScheduleJob(jobDetail, triggersForJob, replace);
         }
 
         public bool UnscheduleJobs(IList<TriggerKey> triggerKeys)

@@ -1,4 +1,5 @@
 #region License
+
 /* 
  * All content copyright Terracotta, Inc., unless otherwise indicated. All rights reserved. 
  * 
@@ -15,6 +16,7 @@
  * under the License.
  * 
  */
+
 #endregion
 
 using System;
@@ -30,9 +32,9 @@ namespace Quartz.Tests.Unit
     [TestFixture]
     public class CronExpressionTest : SerializationTestSupport
     {
-        private static readonly string[] Versions = new string[] { "0.6.0" };
+        private static readonly string[] versions = new[] {"0.6.0"};
 
-        private static readonly TimeZoneInfo TestTimeZone = TimeZoneInfo.Local;
+        private static readonly TimeZoneInfo testTimeZone = TimeZoneInfo.Local;
 
         /// <summary>
         /// Get the object to serialize when generating serialized file for future
@@ -42,7 +44,7 @@ namespace Quartz.Tests.Unit
         protected override object GetTargetObject()
         {
             CronExpression cronExpression = new CronExpression("0 15 10 * * ? 2005");
-            cronExpression.TimeZone = TestTimeZone;
+            cronExpression.TimeZone = testTimeZone;
 
             return cronExpression;
         }
@@ -54,7 +56,7 @@ namespace Quartz.Tests.Unit
         /// <returns></returns>
         protected override string[] GetVersions()
         {
-            return Versions;
+            return versions;
         }
 
         /// <summary>
@@ -65,8 +67,8 @@ namespace Quartz.Tests.Unit
         /// <param name="deserialized"></param>
         protected override void VerifyMatch(object target, object deserialized)
         {
-            CronExpression targetCronExpression = (CronExpression)target;
-            CronExpression deserializedCronExpression = (CronExpression)deserialized;
+            CronExpression targetCronExpression = (CronExpression) target;
+            CronExpression deserializedCronExpression = (CronExpression) deserialized;
 
             Assert.IsNotNull(deserializedCronExpression);
             Assert.AreEqual(targetCronExpression.CronExpressionString, deserializedCronExpression.CronExpressionString);
@@ -148,13 +150,12 @@ namespace Quartz.Tests.Unit
             Assert.AreEqual(expected, d, "Got wrong date and time when passed year");
         }
 
-
         [Test]
         public void TestCronExpressionWeekdaysMonFri()
         {
             CronExpression cronExpression = new CronExpression("0 0 12 ? * MON-FRI");
             int[] arrJuneDaysThatShouldFire =
-                new int[] { 1, 4, 5, 6, 7, 8, 11, 12, 13, 14, 15, 18, 19, 20, 22, 21, 25, 26, 27, 28, 29 };
+                new int[] {1, 4, 5, 6, 7, 8, 11, 12, 13, 14, 15, 18, 19, 20, 22, 21, 25, 26, 27, 28, 29};
             List<int> juneDays = new List<int>(arrJuneDaysThatShouldFire);
 
             TestCorrectWeekFireDays(cronExpression, juneDays);
@@ -165,7 +166,7 @@ namespace Quartz.Tests.Unit
         {
             CronExpression cronExpression = new CronExpression("0 0 12 ? * FRI");
             int[] arrJuneDaysThatShouldFire =
-                new int[] { 1, 8, 15, 22, 29 };
+                new int[] {1, 8, 15, 22, 29};
             List<int> juneDays = new List<int>(arrJuneDaysThatShouldFire);
 
             TestCorrectWeekFireDays(cronExpression, juneDays);
@@ -175,7 +176,7 @@ namespace Quartz.Tests.Unit
         public void TestCronExpressionLastDayOfMonth()
         {
             CronExpression cronExpression = new CronExpression("0 0 12 L * ?");
-            int[] arrJuneDaysThatShouldFire = new int[] { 30 };
+            int[] arrJuneDaysThatShouldFire = new int[] {30};
             List<int> juneDays = new List<int>(arrJuneDaysThatShouldFire);
 
             TestCorrectWeekFireDays(cronExpression, juneDays);
@@ -264,7 +265,7 @@ namespace Quartz.Tests.Unit
         }
 
         [Test]
-        [ExpectedException(ExpectedException = typeof(FormatException),
+        [ExpectedException(ExpectedException = typeof (FormatException),
             ExpectedMessage = "Support for specifying both a day-of-week AND a day-of-month parameter is not implemented.")]
         public void TestFormatExceptionWildCardDayOfMonthAndDayOfWeek()
         {
@@ -273,7 +274,7 @@ namespace Quartz.Tests.Unit
 
         [Test]
         [ExpectedException(
-            ExpectedException = typeof(FormatException),
+            ExpectedException = typeof (FormatException),
             ExpectedMessage = "Support for specifying both a day-of-week AND a day-of-month parameter is not implemented.")]
         public void TestFormatExceptionSpecifiedDayOfMonthAndWildCardDayOfWeek()
         {
@@ -282,7 +283,7 @@ namespace Quartz.Tests.Unit
 
         [Test]
         [ExpectedException(
-            ExpectedException = typeof(FormatException),
+            ExpectedException = typeof (FormatException),
             ExpectedMessage = "Support for specifying both a day-of-week AND a day-of-month parameter is not implemented.")]
         public void TestFormatExceptionWildCardDayOfMonthAndSpecifiedDayOfWeek()
         {
@@ -361,30 +362,28 @@ namespace Quartz.Tests.Unit
         [Test]
         public void TestAmbiguous()
         {
-            Console.Error.WriteLine(AssertParsesForField("0 0 14-6 ? * FRI-MON", 2));
-            Console.Error.WriteLine(AssertParsesForField("0 0 14-6 ? * FRI-MON", 5));
+            AssertParsesForField("0 0 14-6 ? * FRI-MON", 2);
+            AssertParsesForField("0 0 14-6 ? * FRI-MON", 5);
 
-            Console.Error.WriteLine(AssertParsesForField("55-3 56-2 6 ? * FRI", 0));
-            Console.Error.WriteLine(AssertParsesForField("55-3 56-2 6 ? * FRI", 1));
+            AssertParsesForField("55-3 56-2 6 ? * FRI", 0);
+            AssertParsesForField("55-3 56-2 6 ? * FRI", 1);
         }
 
-        private static Collection.ISet<int> AssertParsesForField(string expression, int constant)
+        private static void AssertParsesForField(string expression, int constant)
         {
             try
             {
-                TestCronExpression cronExpression = new TestCronExpression(expression);
+                SimpleCronExpression cronExpression = new SimpleCronExpression(expression);
                 Collection.ISet<int> set = cronExpression.GetSetPublic(constant);
                 if (set.Count == 0)
                 {
                     Assert.Fail("Empty field [" + constant + "] returned for " + expression);
                 }
-                return set;
             }
             catch (FormatException pe)
             {
                 Assert.Fail("Exception thrown during parsing: " + pe);
             }
-            return null;  // not reachable
         }
 
         [Test]
@@ -423,14 +422,14 @@ namespace Quartz.Tests.Unit
                     pe.Message.StartsWith("Support for specifying 'L' with other days of the week is not implemented"),
                     "Incorrect FormatException thrown");
             }
-            try 
-            { 
-                new CronExpression("0 43 9 ? * 5L"); 
+            try
+            {
+                new CronExpression("0 43 9 ? * 5L");
             }
-            catch (FormatException) 
-            { 
-                Assert.Fail("Unexpected ParseException thrown for supported '5L' expression."); 
-            } 
+            catch (FormatException)
+            {
+                Assert.Fail("Unexpected ParseException thrown for supported '5L' expression.");
+            }
         }
 
         [Test]
@@ -452,7 +451,7 @@ namespace Quartz.Tests.Unit
             CronExpression expression = new CronExpression("0 5 13 5W 1-12 ?");
             DateTimeOffset test = new DateTimeOffset(2009, 3, 8, 0, 0, 0, TimeSpan.Zero);
             DateTimeOffset d = expression.GetNextValidTimeAfter(test).Value;
-            Assert.AreEqual(new DateTimeOffset(2009, 4, 6, 13, 5, 0, TimeZoneInfo.Local.GetUtcOffset(test)).ToUniversalTime(), d);
+            Assert.AreEqual(new DateTimeOffset(2009, 4, 6, 13, 5, 0, TimeZoneInfo.Local.GetUtcOffset(d)).ToUniversalTime(), d);
             d = expression.GetNextValidTimeAfter(d).Value;
             Assert.AreEqual(new DateTimeOffset(2009, 5, 5, 13, 5, 0, TimeZoneInfo.Local.GetUtcOffset(d)), d);
         }
@@ -470,19 +469,102 @@ namespace Quartz.Tests.Unit
                 Assert.IsTrue(pe.Message.StartsWith("The 'W' option does not make sense with values larger than"), "Incorrect ParseException thrown");
             }
         }
-    }
 
-
-    class TestCronExpression : CronExpression
-    {
-        public TestCronExpression(string cronExpression)
-            : base(cronExpression)
+        /// <summary>
+        /// QTZ-259 : last day offset causes repeating fire time
+        /// </summary>
+        [Test]
+        public void TestQtz259()
         {
+            ITrigger trigger = TriggerBuilder.Create().WithIdentity("test").WithCronSchedule("0 0 0 L-2 * ? *").Build();
+
+            int i = 0;
+            DateTimeOffset? pdate = trigger.GetFireTimeAfter(DateTimeOffset.Now);
+            while (++i < 26)
+            {
+                DateTimeOffset? date = trigger.GetFireTimeAfter(pdate);
+                Console.WriteLine("fireTime: " + date + ", previousFireTime: " + pdate);
+                Assert.False(pdate.Equals(date), "Next fire time is the same as previous fire time!");
+                pdate = date;
+            }
         }
 
-        public ISortedSet<int> GetSetPublic(int constant)
+        /// <summary>
+        /// QTZ-259 : last day offset causes repeating fire time
+        /// </summary>
+        [Test]
+        public void TestQtz259Lw()
         {
-            return base.GetSet(constant);
+            ITrigger trigger = TriggerBuilder.Create().WithIdentity("test").WithCronSchedule("0 0 0 LW * ? *").Build();
+
+            int i = 0;
+            DateTimeOffset? pdate = trigger.GetFireTimeAfter(DateTimeOffset.Now);
+            while (++i < 26)
+            {
+                DateTimeOffset? date = trigger.GetFireTimeAfter(pdate);
+                Console.WriteLine("fireTime: " + date + ", previousFireTime: " + pdate);
+                Assert.False(pdate.Equals(date), "Next fire time is the same as previous fire time!");
+                pdate = date;
+            }
+        }
+
+        [Test]
+        public void TestDaylightSaving_QRTZNETZ186()
+        {
+            CronExpression expression = new CronExpression("0 15 * * * ?");
+            if (!TimeZoneInfo.Local.SupportsDaylightSavingTime)
+            {
+                return;
+            }
+            var daylightChange = TimeZone.CurrentTimeZone.GetDaylightChanges(2012);
+            DateTimeOffset before = daylightChange.Start.ToUniversalTime().AddMinutes(-5); // keep outside the potentially undefined interval
+            DateTimeOffset? after = expression.GetNextValidTimeAfter(before);
+            Assert.IsTrue(after.HasValue);
+            DateTimeOffset expected = daylightChange.Start.Add(daylightChange.Delta).AddMinutes(15).ToUniversalTime();
+            Assert.AreEqual(expected, after.Value);
+        }
+
+        [Test]
+        public void TestDaylightSavingsDoesNotMatchAnHourBefore()
+        {
+            TimeZoneInfo est = TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time");
+            CronExpression expression = new CronExpression("0 15 15 5 11 ?");
+            expression.TimeZone = est;
+
+            DateTimeOffset startTime = new DateTimeOffset(2012, 11, 4, 0, 0, 0, TimeSpan.Zero);
+            
+            var actualTime = expression.GetTimeAfter(startTime);
+            DateTimeOffset expected = new DateTimeOffset(2012, 11, 5, 15, 15, 0, TimeSpan.FromHours(-5));
+
+            Assert.AreEqual(expected, actualTime.Value);
+        }
+
+        [Test]
+        public void TestDaylightSavingsDoesNotMatchAnHourBefore2()
+        {
+            //another case
+            TimeZoneInfo est = TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time");
+            CronExpression expression = new CronExpression("0 0 0 ? * THU");
+            expression.TimeZone = est;
+
+            DateTimeOffset startTime = new DateTimeOffset(2012, 11, 4, 0, 0, 0, TimeSpan.Zero);
+
+            var actualTime = expression.GetTimeAfter(startTime);
+            DateTimeOffset expected = new DateTimeOffset(2012, 11, 8, 0, 0, 0, TimeSpan.FromHours(-5));
+            Assert.AreEqual(expected, actualTime);
+        }
+
+        private class SimpleCronExpression : CronExpression
+        {
+            public SimpleCronExpression(string cronExpression)
+                : base(cronExpression)
+            {
+            }
+
+            public ISortedSet<int> GetSetPublic(int constant)
+            {
+                return base.GetSet(constant);
+            }
         }
     }
 }

@@ -31,7 +31,9 @@ namespace Quartz.Util
     [Serializable]
     public class Key<T> : IComparable<Key<T>>
     {
-        // The default group for scheduling entities, with the value "DEFAULT".
+        /// <summary>
+        /// The default group for scheduling entities, with the value "DEFAULT".
+        /// </summary>
         public const string DefaultGroup = "DEFAULT";
 
         private readonly string name;
@@ -98,10 +100,10 @@ namespace Quartz.Util
 
         public override int GetHashCode()
         {
-            const int prime = 31;
+            const int Prime = 31;
             int result = 1;
-            result = prime*result + ((group == null) ? 0 : group.GetHashCode());
-            result = prime*result + ((name == null) ? 0 : name.GetHashCode());
+            result = Prime*result + ((group == null) ? 0 : group.GetHashCode());
+            result = Prime*result + ((name == null) ? 0 : name.GetHashCode());
             return result;
         }
 
@@ -163,19 +165,6 @@ namespace Quartz.Util
             }
 
             return name.CompareTo(o.Name);
-        }
-
-        public static string CreateUniqueName(string group)
-        {
-            if (group == null)
-            {
-                group = DefaultGroup;
-            }
-
-            string n1 = Guid.NewGuid().ToString();
-            string n2 = Guid.NewGuid().ToString();
-
-            return String.Format("{0}-{1}", n2.Substring(24), n1);
         }
     }
 }

@@ -28,16 +28,15 @@ using Quartz.Util;
 namespace Quartz.Impl.AdoJobStore
 {
     /// <summary>
-    /// A base implementation of {@link TriggerPersistenceDelegate} that persists
+    /// A base implementation of <see cref="ITriggerPersistenceDelegate" /> that persists
     /// trigger fields in the "QRTZ_SIMPROP_TRIGGERS" table.  This allows extending
     /// concrete classes to simply implement a couple methods that do the work of
     /// getting/setting the trigger's fields, and creating the <see cref="IScheduleBuilder" />
     /// for the particular type of trigger.
     /// </summary>
-    /// <remarks>
-    /// </remarks>
     /// <seealso cref="CalendarIntervalTriggerPersistenceDelegate" />
     /// <author>jhouse</author>
+    /// <author>Marko Lahma (.NET)</author>
     public abstract class SimplePropertiesTriggerPersistenceDelegateSupport : ITriggerPersistenceDelegate
     {
         protected const string TableSimplePropertiesTriggers = "SIMPROP_TRIGGERS";
@@ -55,61 +54,70 @@ namespace Quartz.Impl.AdoJobStore
         protected const string ColumnBoolProp2 = "BOOL_PROP_2";
 
         protected const string SelectSimplePropsTrigger = "SELECT *" + " FROM "
-                                                            + StdAdoConstants.TablePrefixSubst + TableSimplePropertiesTriggers + " WHERE "
-                                                            + AdoConstants.ColumnSchedulerName + " = " + StdAdoConstants.SchedulerNameSubst
-                                                            + " AND " + AdoConstants.ColumnTriggerName + " = @triggerName AND " + AdoConstants.ColumnTriggerGroup + " = @triggerGroup";
+                                                          + StdAdoConstants.TablePrefixSubst + TableSimplePropertiesTriggers + " WHERE "
+                                                          + AdoConstants.ColumnSchedulerName + " = " + StdAdoConstants.SchedulerNameSubst
+                                                          + " AND " + AdoConstants.ColumnTriggerName + " = @triggerName AND " + AdoConstants.ColumnTriggerGroup + " = @triggerGroup";
 
         protected const string DeleteSimplePropsTrigger = "DELETE FROM "
-                                                            + StdAdoConstants.TablePrefixSubst + TableSimplePropertiesTriggers + " WHERE "
-                                                            + AdoConstants.ColumnSchedulerName + " = " + StdAdoConstants.SchedulerNameSubst
-                                                            + " AND " + AdoConstants.ColumnTriggerName + " = @triggerName AND " + AdoConstants.ColumnTriggerGroup + " = @triggerGroup";
+                                                          + StdAdoConstants.TablePrefixSubst + TableSimplePropertiesTriggers + " WHERE "
+                                                          + AdoConstants.ColumnSchedulerName + " = " + StdAdoConstants.SchedulerNameSubst
+                                                          + " AND " + AdoConstants.ColumnTriggerName + " = @triggerName AND " + AdoConstants.ColumnTriggerGroup + " = @triggerGroup";
 
         protected const string InsertSimplePropsTrigger = "INSERT INTO "
-                                                            + StdAdoConstants.TablePrefixSubst + TableSimplePropertiesTriggers + " ("
-                                                            + AdoConstants.ColumnSchedulerName + ", "
-                                                            + AdoConstants.ColumnTriggerName + ", " + AdoConstants.ColumnTriggerGroup + ", "
-                                                            + ColumnStrProp1 + ", " + ColumnStrProp2 + ", " + ColumnStrProp3 + ", "
-                                                            + ColumnIntProp1 + ", " + ColumnIntProp2 + ", "
-                                                            + ColumnLongProp1 + ", " + ColumnLongProp2 + ", "
-                                                            + ColumnDecProp1 + ", " + ColumnDecProp2 + ", "
-                                                            + ColumnBoolProp1 + ", " + ColumnBoolProp2
-                                                            + ") " + " VALUES(" + StdAdoConstants.SchedulerNameSubst + ", @triggerName, @triggerGroup, @string1, @string2, @string3, @int1, @int2, @long1, @long2, @decimal1, @decimal2, @boolean1, @boolean2)";
+                                                          + StdAdoConstants.TablePrefixSubst + TableSimplePropertiesTriggers + " ("
+                                                          + AdoConstants.ColumnSchedulerName + ", "
+                                                          + AdoConstants.ColumnTriggerName + ", " + AdoConstants.ColumnTriggerGroup + ", "
+                                                          + ColumnStrProp1 + ", " + ColumnStrProp2 + ", " + ColumnStrProp3 + ", "
+                                                          + ColumnIntProp1 + ", " + ColumnIntProp2 + ", "
+                                                          + ColumnLongProp1 + ", " + ColumnLongProp2 + ", "
+                                                          + ColumnDecProp1 + ", " + ColumnDecProp2 + ", "
+                                                          + ColumnBoolProp1 + ", " + ColumnBoolProp2
+                                                          + ") " + " VALUES(" + StdAdoConstants.SchedulerNameSubst + ", @triggerName, @triggerGroup, @string1, @string2, @string3, @int1, @int2, @long1, @long2, @decimal1, @decimal2, @boolean1, @boolean2)";
 
         protected const string UpdateSimplePropsTrigger = "UPDATE "
-                                                            + StdAdoConstants.TablePrefixSubst + TableSimplePropertiesTriggers + " SET "
-                                                            + ColumnStrProp1 + " = @string1, " + ColumnStrProp2 + " = @string2, " + ColumnStrProp3 + " = @string3, "
-                                                            + ColumnIntProp1 + " = @int1, " + ColumnIntProp2 + " = @int2, "
-                                                            + ColumnLongProp1 + " = @long1, " + ColumnLongProp2 + " = @long2, "
-                                                            + ColumnDecProp1 + " = @decimal1, " + ColumnDecProp2 + " = @decimal2, "
-                                                            + ColumnBoolProp1 + " = @boolean1, " + ColumnBoolProp2
-                                                            + " = @boolean2 WHERE " + AdoConstants.ColumnSchedulerName + " = " + StdAdoConstants.SchedulerNameSubst
-                                                            + " AND " + AdoConstants.ColumnTriggerName
-                                                            + " = @triggerName AND " + AdoConstants.ColumnTriggerGroup + " = @triggerGroup"; 
+                                                          + StdAdoConstants.TablePrefixSubst + TableSimplePropertiesTriggers + " SET "
+                                                          + ColumnStrProp1 + " = @string1, " + ColumnStrProp2 + " = @string2, " + ColumnStrProp3 + " = @string3, "
+                                                          + ColumnIntProp1 + " = @int1, " + ColumnIntProp2 + " = @int2, "
+                                                          + ColumnLongProp1 + " = @long1, " + ColumnLongProp2 + " = @long2, "
+                                                          + ColumnDecProp1 + " = @decimal1, " + ColumnDecProp2 + " = @decimal2, "
+                                                          + ColumnBoolProp1 + " = @boolean1, " + ColumnBoolProp2
+                                                          + " = @boolean2 WHERE " + AdoConstants.ColumnSchedulerName + " = " + StdAdoConstants.SchedulerNameSubst
+                                                          + " AND " + AdoConstants.ColumnTriggerName
+                                                          + " = @triggerName AND " + AdoConstants.ColumnTriggerGroup + " = @triggerGroup";
 
-        protected string tablePrefix;
-        protected string schedNameLiteral;
-        protected ICommandAccessor commandAccessor;
-
-        public void Initialize(string tablePrefix, string schedName, ICommandAccessor commandAccessor)
+        public void Initialize(string tablePrefix, string schedName, IDbAccessor dbAccessor)
         {
-            this.tablePrefix = tablePrefix;
-            this.commandAccessor = commandAccessor;
-            schedNameLiteral = "'" + schedName + "'";
+            TablePrefix = tablePrefix;
+            DbAccessor = dbAccessor;
+            SchedNameLiteral = "'" + schedName + "'";
         }
 
+        /// <summary>
+        /// Returns whether the trigger type can be handled by delegate.
+        /// </summary>
         public abstract bool CanHandleTriggerType(IOperableTrigger trigger);
+
+        /// <summary>
+        /// Returns database discriminator value for trigger type.
+        /// </summary>
         public abstract string GetHandledTriggerTypeDiscriminator();
 
         protected abstract SimplePropertiesTriggerProperties GetTriggerProperties(IOperableTrigger trigger);
 
         protected abstract TriggerPropertyBundle GetTriggerPropertyBundle(SimplePropertiesTriggerProperties properties);
 
+        protected string TablePrefix { get; private set; }
+
+        protected string SchedNameLiteral { get; private set; }
+
+        protected IDbAccessor DbAccessor { get; private set; }
+
         public int DeleteExtendedTriggerProperties(ConnectionAndTransactionHolder conn, TriggerKey triggerKey)
         {
-            using (IDbCommand cmd = commandAccessor.PrepareCommand(conn, AdoJobStoreUtil.ReplaceTablePrefix(DeleteSimplePropsTrigger, tablePrefix, schedNameLiteral)))
+            using (IDbCommand cmd = DbAccessor.PrepareCommand(conn, AdoJobStoreUtil.ReplaceTablePrefix(DeleteSimplePropsTrigger, TablePrefix, SchedNameLiteral)))
             {
-                commandAccessor.AddCommandParameter(cmd, "triggerName", triggerKey.Name);
-                commandAccessor.AddCommandParameter(cmd, "triggerGroup", triggerKey.Group);
+                DbAccessor.AddCommandParameter(cmd, "triggerName", triggerKey.Name);
+                DbAccessor.AddCommandParameter(cmd, "triggerGroup", triggerKey.Group);
 
                 return cmd.ExecuteNonQuery();
             }
@@ -119,22 +127,22 @@ namespace Quartz.Impl.AdoJobStore
         {
             SimplePropertiesTriggerProperties properties = GetTriggerProperties(trigger);
 
-            using (IDbCommand cmd = commandAccessor.PrepareCommand(conn, AdoJobStoreUtil.ReplaceTablePrefix(InsertSimplePropsTrigger, tablePrefix, schedNameLiteral)))
+            using (IDbCommand cmd = DbAccessor.PrepareCommand(conn, AdoJobStoreUtil.ReplaceTablePrefix(InsertSimplePropsTrigger, TablePrefix, SchedNameLiteral)))
             {
-                commandAccessor.AddCommandParameter(cmd, "triggerName", trigger.Key.Name);
-                commandAccessor.AddCommandParameter(cmd, "triggerGroup", trigger.Key.Group);
+                DbAccessor.AddCommandParameter(cmd, "triggerName", trigger.Key.Name);
+                DbAccessor.AddCommandParameter(cmd, "triggerGroup", trigger.Key.Group);
 
-                commandAccessor.AddCommandParameter(cmd, "string1", properties.String1);
-                commandAccessor.AddCommandParameter(cmd, "string2", properties.String2);
-                commandAccessor.AddCommandParameter(cmd, "string3", properties.String3);
-                commandAccessor.AddCommandParameter(cmd, "int1", properties.Int1);
-                commandAccessor.AddCommandParameter(cmd, "int2", properties.Int2);
-                commandAccessor.AddCommandParameter(cmd, "long1", properties.Long1);
-                commandAccessor.AddCommandParameter(cmd, "long2", properties.Long2);
-                commandAccessor.AddCommandParameter(cmd, "decimal1", properties.Decimal1);
-                commandAccessor.AddCommandParameter(cmd, "decimal2", properties.Decimal2);
-                commandAccessor.AddCommandParameter(cmd, "boolean1", properties.Boolean1);
-                commandAccessor.AddCommandParameter(cmd, "boolean2", properties.Boolean2);
+                DbAccessor.AddCommandParameter(cmd, "string1", properties.String1);
+                DbAccessor.AddCommandParameter(cmd, "string2", properties.String2);
+                DbAccessor.AddCommandParameter(cmd, "string3", properties.String3);
+                DbAccessor.AddCommandParameter(cmd, "int1", properties.Int1);
+                DbAccessor.AddCommandParameter(cmd, "int2", properties.Int2);
+                DbAccessor.AddCommandParameter(cmd, "long1", properties.Long1);
+                DbAccessor.AddCommandParameter(cmd, "long2", properties.Long2);
+                DbAccessor.AddCommandParameter(cmd, "decimal1", properties.Decimal1);
+                DbAccessor.AddCommandParameter(cmd, "decimal2", properties.Decimal2);
+                DbAccessor.AddCommandParameter(cmd, "boolean1", DbAccessor.GetDbBooleanValue(properties.Boolean1));
+                DbAccessor.AddCommandParameter(cmd, "boolean2", DbAccessor.GetDbBooleanValue(properties.Boolean2));
 
                 return cmd.ExecuteNonQuery();
             }
@@ -142,10 +150,10 @@ namespace Quartz.Impl.AdoJobStore
 
         public TriggerPropertyBundle LoadExtendedTriggerProperties(ConnectionAndTransactionHolder conn, TriggerKey triggerKey)
         {
-            using (IDbCommand cmd = commandAccessor.PrepareCommand(conn, AdoJobStoreUtil.ReplaceTablePrefix(SelectSimplePropsTrigger, tablePrefix, schedNameLiteral)))
+            using (IDbCommand cmd = DbAccessor.PrepareCommand(conn, AdoJobStoreUtil.ReplaceTablePrefix(SelectSimplePropsTrigger, TablePrefix, SchedNameLiteral)))
             {
-                commandAccessor.AddCommandParameter(cmd, "triggerName", triggerKey.Name);
-                commandAccessor.AddCommandParameter(cmd, "triggerGroup", triggerKey.Group);
+                DbAccessor.AddCommandParameter(cmd, "triggerName", triggerKey.Name);
+                DbAccessor.AddCommandParameter(cmd, "triggerGroup", triggerKey.Group);
 
                 using (IDataReader rs = cmd.ExecuteReader())
                 {
@@ -153,45 +161,45 @@ namespace Quartz.Impl.AdoJobStore
                     {
                         SimplePropertiesTriggerProperties properties = new SimplePropertiesTriggerProperties();
 
-                        properties.String1 = (rs.GetString(ColumnStrProp1));
-                        properties.String2 = (rs.GetString(ColumnStrProp2));
-                        properties.String3 = (rs.GetString(ColumnStrProp3));
-                        properties.Int1 = (rs.GetInt32(ColumnIntProp1));
-                        properties.Int2 = (rs.GetInt32(ColumnIntProp2));
-                        properties.Long1 = (rs.GetInt32(ColumnLongProp1));
-                        properties.Long2 = (rs.GetInt32(ColumnLongProp2));
-                        properties.Decimal1 = (rs.GetDecimal(ColumnDecProp1));
-                        properties.Decimal2 = (rs.GetDecimal(ColumnDecProp2));
-                        properties.Boolean1 = (rs.GetBoolean(ColumnBoolProp1));
-                        properties.Boolean2 = (rs.GetBoolean(ColumnBoolProp2));
+                        properties.String1 = rs.GetString(ColumnStrProp1);
+                        properties.String2 = rs.GetString(ColumnStrProp2);
+                        properties.String3 = rs.GetString(ColumnStrProp3);
+                        properties.Int1 = rs.GetInt32(ColumnIntProp1);
+                        properties.Int2 = rs.GetInt32(ColumnIntProp2);
+                        properties.Long1 = rs.GetInt32(ColumnLongProp1);
+                        properties.Long2 = rs.GetInt32(ColumnLongProp2);
+                        properties.Decimal1 = rs.GetDecimal(ColumnDecProp1);
+                        properties.Decimal2 = rs.GetDecimal(ColumnDecProp2);
+                        properties.Boolean1 = DbAccessor.GetBooleanFromDbValue(rs[ColumnBoolProp1]);
+                        properties.Boolean2 = DbAccessor.GetBooleanFromDbValue(rs[ColumnBoolProp2]);
 
                         return GetTriggerPropertyBundle(properties);
                     }
                 }
             }
 
-            throw new InvalidOperationException("No record found for selection of Trigger with key: '" + triggerKey + "' and statement: " + AdoJobStoreUtil.ReplaceTablePrefix(StdAdoConstants.SqlSelectSimpleTrigger, tablePrefix, schedNameLiteral));
+            throw new InvalidOperationException("No record found for selection of Trigger with key: '" + triggerKey + "' and statement: " + AdoJobStoreUtil.ReplaceTablePrefix(StdAdoConstants.SqlSelectSimpleTrigger, TablePrefix, SchedNameLiteral));
         }
 
         public int UpdateExtendedTriggerProperties(ConnectionAndTransactionHolder conn, IOperableTrigger trigger, string state, IJobDetail jobDetail)
         {
             SimplePropertiesTriggerProperties properties = GetTriggerProperties(trigger);
 
-            using (IDbCommand cmd = commandAccessor.PrepareCommand(conn, AdoJobStoreUtil.ReplaceTablePrefix(UpdateSimplePropsTrigger, tablePrefix, schedNameLiteral)))
+            using (IDbCommand cmd = DbAccessor.PrepareCommand(conn, AdoJobStoreUtil.ReplaceTablePrefix(UpdateSimplePropsTrigger, TablePrefix, SchedNameLiteral)))
             {
-                commandAccessor.AddCommandParameter(cmd, "string1", properties.String1);
-                commandAccessor.AddCommandParameter(cmd, "string2", properties.String2);
-                commandAccessor.AddCommandParameter(cmd, "string3", properties.String3);
-                commandAccessor.AddCommandParameter(cmd, "int1", properties.Int1);
-                commandAccessor.AddCommandParameter(cmd, "int2", properties.Int2);
-                commandAccessor.AddCommandParameter(cmd, "long1", properties.Long1);
-                commandAccessor.AddCommandParameter(cmd, "long2", properties.Long2);
-                commandAccessor.AddCommandParameter(cmd, "decimal1", properties.Decimal1);
-                commandAccessor.AddCommandParameter(cmd, "decimal2", properties.Decimal2);
-                commandAccessor.AddCommandParameter(cmd, "boolean1", properties.Boolean1);
-                commandAccessor.AddCommandParameter(cmd, "boolean2", properties.Boolean2);
-                commandAccessor.AddCommandParameter(cmd, "triggerName", trigger.Key.Name);
-                commandAccessor.AddCommandParameter(cmd, "triggerGroup", trigger.Key.Group);
+                DbAccessor.AddCommandParameter(cmd, "string1", properties.String1);
+                DbAccessor.AddCommandParameter(cmd, "string2", properties.String2);
+                DbAccessor.AddCommandParameter(cmd, "string3", properties.String3);
+                DbAccessor.AddCommandParameter(cmd, "int1", properties.Int1);
+                DbAccessor.AddCommandParameter(cmd, "int2", properties.Int2);
+                DbAccessor.AddCommandParameter(cmd, "long1", properties.Long1);
+                DbAccessor.AddCommandParameter(cmd, "long2", properties.Long2);
+                DbAccessor.AddCommandParameter(cmd, "decimal1", properties.Decimal1);
+                DbAccessor.AddCommandParameter(cmd, "decimal2", properties.Decimal2);
+                DbAccessor.AddCommandParameter(cmd, "boolean1", DbAccessor.GetDbBooleanValue(properties.Boolean1));
+                DbAccessor.AddCommandParameter(cmd, "boolean2", DbAccessor.GetDbBooleanValue(properties.Boolean2));
+                DbAccessor.AddCommandParameter(cmd, "triggerName", trigger.Key.Name);
+                DbAccessor.AddCommandParameter(cmd, "triggerGroup", trigger.Key.Group);
 
                 return cmd.ExecuteNonQuery();
             }

@@ -5,7 +5,7 @@ namespace Quartz.Server
     /// <summary>
     /// Service interface for core Quartz.NET server.
     /// </summary>
-    public interface IQuartzServer : IDisposable
+    public interface IQuartzServer
     {
         /// <summary>
         /// Initializes the instance of <see cref="IQuartzServer"/>.
@@ -23,5 +23,14 @@ namespace Quartz.Server
         /// </summary>
         void Stop();
 
+        /// <summary>
+        /// Pauses all activity in scheudler.
+        /// </summary>
+        void Pause();
+
+        /// <summary>
+        /// Resumes all acitivity in server.
+        /// </summary>
+        void Resume();
     }
 }

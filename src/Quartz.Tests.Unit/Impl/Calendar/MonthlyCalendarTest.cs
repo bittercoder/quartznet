@@ -30,9 +30,7 @@ namespace Quartz.Tests.Unit.Impl.Calendar
     {
         private MonthlyCalendar cal;
 
-        private static string[] VERSIONS = new string[] { "1.5.1" };
-
-        //private static final TimeZone EST_TIME_ZONE = TimeZone.getTimeZone("America/New_York"); 
+        private static readonly string[] versions = new[] { "1.5.1" };
 
         [SetUp]
         public void Setup()
@@ -71,6 +69,21 @@ namespace Quartz.Tests.Unit.Impl.Calendar
 
             monthlyCalendar.GetNextIncludedTimeUtc(d.ToUniversalTime());
         }
+
+        [Test]
+        public void TestTimeZone()
+        {
+            TimeZoneInfo tz = TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time");
+            MonthlyCalendar monthlyCalendar = new MonthlyCalendar();
+            monthlyCalendar.TimeZone = tz;
+
+            monthlyCalendar.SetDayExcluded(4, true);
+
+            // 11/5/2012 12:00:00 AM -04:00  translate into 11/4/2012 11:00:00 PM -05:00 (EST)
+            DateTimeOffset date = new DateTimeOffset(2012, 11, 5, 0, 0, 0, TimeSpan.FromHours(-4));
+
+            Assert.IsFalse(monthlyCalendar.IsTimeIncluded(date));
+        }
     
         /// <summary>
         /// Get the object to serialize when generating serialized file for future
@@ -93,7 +106,7 @@ namespace Quartz.Tests.Unit.Impl.Calendar
         /// <returns></returns>
         protected override string[] GetVersions()
         {
-            return VERSIONS;
+            return versions;
         }
 
         /// <summary>
@@ -110,7 +123,7 @@ namespace Quartz.Tests.Unit.Impl.Calendar
             Assert.IsNotNull(deserializedCalendar);
             Assert.AreEqual(targetCalendar.Description, deserializedCalendar.Description);
             Assert.AreEqual(targetCalendar.DaysExcluded, deserializedCalendar.DaysExcluded);
-            ///Assert.IsNull(deserializedCalendar.getTimeZone());
+            //Assert.IsNull(deserializedCalendar.getTimeZone());
         }
     }
 }

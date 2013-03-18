@@ -23,11 +23,12 @@ using System.Threading;
 using Common.Logging;
 
 using Quartz.Impl;
+using Quartz.Impl.Calendar;
 
-namespace Quartz.Examples.example15
+namespace Quartz.Examples.Example15
 {
     /// <summary>
-    /// This Example will demonstrate how configuration can be
+    /// This example will demonstrate how configuration can be
     /// done using an XML file.
     /// </summary>
     /// <author>Marko Lahma (.NET)</author>
@@ -54,12 +55,17 @@ namespace Quartz.Examples.example15
             properties["quartz.threadPool.threadPriority"] = "Normal";
 
             // job initialization plugin handles our xml reading, without it defaults are used
-            properties["quartz.plugin.xml.type"] = "Quartz.Plugin.Xml.JobInitializationPlugin, Quartz";
+            properties["quartz.plugin.xml.type"] = "Quartz.Plugin.Xml.XMLSchedulingDataProcessorPlugin, Quartz";
             properties["quartz.plugin.xml.fileNames"] = "~/quartz_jobs.xml";
 
 
             ISchedulerFactory sf = new StdSchedulerFactory(properties);
             IScheduler sched = sf.GetScheduler();
+            
+            // we need to add calendars manually, lets create a silly sample calendar
+            var dailyCalendar = new DailyCalendar("00:01", "23:59");
+            dailyCalendar.InvertTimeRange = true;
+            sched.AddCalendar("cal1", dailyCalendar, false, false);
 
             log.Info("------- Initialization Complete -----------");
 

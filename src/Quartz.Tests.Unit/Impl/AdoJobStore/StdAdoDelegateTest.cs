@@ -21,6 +21,7 @@ using System.Runtime.Serialization;
 
 using Common.Logging;
 using NUnit.Framework;
+
 using Quartz.Impl.AdoJobStore;
 using Quartz.Impl.AdoJobStore.Common;
 using Quartz.Simpl;
@@ -34,9 +35,19 @@ namespace Quartz.Tests.Unit.Impl.AdoJobStore
 		[Test]
 		public void TestSerializeJobData()
 		{
-			StdAdoDelegate del = new StdAdoDelegate(LogManager.GetLogger(GetType()), "QRTZ_", "TESTSCHED", "INSTANCE", new DbProvider("SqlServer-20", ""), new SimpleTypeLoadHelper());
+            var args = new DelegateInitializationArgs();
+		    args.Logger = LogManager.GetLogger(GetType());
+		    args.TablePrefix = "QRTZ_";
+		    args.InstanceName = "TESTSCHED";
+		    args.InstanceId = "INSTANCE";
+		    args.DbProvider = new DbProvider("SqlServer-20", "");
+		    args.TypeLoadHelper = new SimpleTypeLoadHelper();
+            args.ObjectSerializer = new DefaultObjectSerializer();
+ 
+			var del = new StdAdoDelegate();
+            del.Initialize(args);
 
-			JobDataMap jdm = new JobDataMap();
+			var jdm = new JobDataMap();
 			del.SerializeJobData(jdm);
 
 			jdm.Clear();
@@ -48,7 +59,8 @@ namespace Quartz.Tests.Unit.Impl.AdoJobStore
 			jdm.Put("key1", "value");
 			jdm.Put("key2", null);
 			jdm.Put("key3", new NonSerializableTestClass());
-			try
+
+            try
 			{
 				del.SerializeJobData(jdm);
 				Assert.Fail();

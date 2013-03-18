@@ -30,9 +30,11 @@ obj/
 [Dd]ebug*/
 [Rr]elease*/
 Ankh.NoLoad
+*.docstates
 
 #Tooling
 _ReSharper*/
+_dotCover*/
 *.resharper
 [Tt]est[Rr]esult*
 
@@ -44,9 +46,16 @@ _ReSharper*/
 
 # Office Temp Files
 ~$*
+
+# Other
 /src/Quartz/Quartz.xml
 *.ReSharper
 *.dotCover
-/package
+/package/*
 *.snk
 *.zip
+website
+/doc/apidoc
+*.nupkg
+/packages/*
+!/packages/repositories.config

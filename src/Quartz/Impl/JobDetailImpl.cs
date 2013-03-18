@@ -25,7 +25,7 @@ using Quartz.Util;
 namespace Quartz.Impl
 {
     /// <summary>
-    /// Conveys the detail properties of a given <code>Job</code> instance. 
+    /// Conveys the detail properties of a given job instance. 
     /// </summary>
     /// <remarks>
     /// Quartz does not store an actual instance of a <see cref="IJob" /> type, but
@@ -109,13 +109,12 @@ namespace Quartz.Impl
         /// <param name="name">The name.</param>
         /// <param name="group">if <see langword="null" />, Scheduler.DefaultGroup will be used.</param>
         /// <param name="jobType">Type of the job.</param>
-        /// <param name="isVolatile">if set to <c>true</c>, job will be volatile.</param>
         /// <param name="isDurable">if set to <c>true</c>, job will be durable.</param>
         /// <param name="requestsRecovery">if set to <c>true</c>, job will request recovery.</param>
         /// <exception cref="ArgumentException"> 
         /// ArgumentException if name is null or empty, or the group is an empty string.
         /// </exception>
-        public JobDetailImpl(string name, string group, Type jobType, bool isVolatile, bool isDurable, bool requestsRecovery)
+        public JobDetailImpl(string name, string group, Type jobType, bool isDurable, bool requestsRecovery)
         {
             Name = name;
             Group = group;
@@ -200,7 +199,12 @@ namespace Quartz.Impl
 
                 return key;
             }
-            set { key = value; }
+            set
+            {
+                Name = value != null ? value.Name : null;
+                Group = value != null ? value.Group : null;
+                key = value;
+            }
         }
 
         /// <summary>
@@ -303,7 +307,7 @@ namespace Quartz.Impl
         /// <summary>
         /// Whether the associated Job class carries the <see cref="DisallowConcurrentExecutionAttribute" /> attribute.
         /// </summary>
-        public bool ConcurrentExectionDisallowed
+        public bool ConcurrentExecutionDisallowed
         {
             get { return ObjectUtils.IsAttributePresent(jobType, typeof (DisallowConcurrentExecutionAttribute)); }
         }
@@ -339,7 +343,7 @@ namespace Quartz.Impl
                 string.Format(
                     CultureInfo.InvariantCulture,
                     "JobDetail '{0}':  jobType: '{1} persistJobDataAfterExecution: {2} concurrentExectionDisallowed: {3} isDurable: {4} requestsRecovers: {5}",
-                    FullName, ((JobType == null) ? null : JobType.FullName), PersistJobDataAfterExecution, ConcurrentExectionDisallowed, Durable, RequestsRecovery);
+                    FullName, ((JobType == null) ? null : JobType.FullName), PersistJobDataAfterExecution, ConcurrentExecutionDisallowed, Durable, RequestsRecovery);
         }
 
         /// <summary>

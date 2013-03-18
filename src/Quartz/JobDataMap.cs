@@ -1,4 +1,5 @@
 #region License
+
 /* 
  * All content copyright Terracotta, Inc., unless otherwise indicated. All rights reserved. 
  * 
@@ -15,12 +16,14 @@
  * under the License.
  * 
  */
+
 #endregion
 
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Runtime.Serialization;
 
 using Quartz.Util;
 
@@ -80,6 +83,15 @@ namespace Quartz
             {
                 Put((string) entry.Key, entry.Value);
             }
+        }
+
+        /// <summary>
+        /// Serialization constructor.
+        /// </summary>
+        /// <param name="info"></param>
+        /// <param name="context"></param>
+        protected JobDataMap(SerializationInfo info, StreamingContext context) : base(info, context)
+        {
         }
 
         /// <summary>
@@ -146,15 +158,43 @@ namespace Quartz
             base.Put(key, strValue);
         }
 
+        /// <summary>
+        /// Adds the given <see cref="DateTime" /> value as a string version to the
+        /// <see cref="IJob" />'s data map.
+        /// </summary>
+        public virtual void PutAsString(string key, DateTime value)
+        {
+            string strValue = value.ToString(CultureInfo.InvariantCulture);
+            base.Put(key, strValue);
+        }
+
+        /// <summary>
+        /// Adds the given <see cref="DateTimeOffset" /> value as a string version to the
+        /// <see cref="IJob" />'s data map.
+        /// </summary>
+        public virtual void PutAsString(string key, DateTimeOffset value)
+        {
+            string strValue = value.ToString(CultureInfo.InvariantCulture);
+            base.Put(key, strValue);
+        }
+
+        /// <summary>
+        /// Adds the given <see cref="TimeSpan" /> value as a string version to the
+        /// <see cref="IJob" />'s data map.
+        /// </summary>
+        public virtual void PutAsString(string key, TimeSpan value)
+        {
+            string strValue = value.ToString();
+            base.Put(key, strValue);
+        }
 
         /// <summary>
         /// Retrieve the identified <see cref="int" /> value from the <see cref="JobDataMap" />.
         /// </summary>
-        public virtual int GetIntFromString(string key)
+        public virtual int GetIntValueFromString(string key)
         {
-            object obj = this[key];
-
-            return Int32.Parse((string)obj, CultureInfo.InvariantCulture);
+            object obj = Get(key);
+            return Int32.Parse((string) obj, CultureInfo.InvariantCulture);
         }
 
         /// <summary>
@@ -162,26 +202,14 @@ namespace Quartz
         /// </summary>
         public virtual int GetIntValue(string key)
         {
-            object obj = this[key];
+            object obj = Get(key);
 
             if (obj is string)
             {
-                return GetIntFromString(key);
+                return GetIntValueFromString(key);
             }
-            else
-            {
-                return GetInt(key);
-            }
-        }
 
-        /// <summary>
-        /// Retrieve the identified <see cref="int" /> value from the <see cref="JobDataMap" />.
-        /// </summary>
-        public virtual int GetIntegerFromString(string key)
-        {
-            object obj = this[key];
-
-            return Int32.Parse((string)obj, CultureInfo.InvariantCulture);
+            return GetInt(key);
         }
 
         /// <summary>
@@ -189,9 +217,9 @@ namespace Quartz
         /// </summary>
         public virtual bool GetBooleanValueFromString(string key)
         {
-            object obj = this[key];
+            object obj = Get(key);
 
-            return ((string)obj).ToUpper(CultureInfo.InvariantCulture).Equals("TRUE");
+            return ((string) obj).ToUpper(CultureInfo.InvariantCulture).Equals("TRUE");
         }
 
         /// <summary>
@@ -200,24 +228,14 @@ namespace Quartz
         /// </summary>
         public virtual bool GetBooleanValue(string key)
         {
-            object obj = this[key];
+            object obj = Get(key);
 
             if (obj is string)
             {
                 return GetBooleanValueFromString(key);
             }
-            
+
             return GetBoolean(key);
-        }
-
-        /// <summary>
-        /// Retrieve the identified <see cref="Boolean" /> value from the <see cref="JobDataMap" />.
-        /// </summary>
-        public virtual Boolean GetBooleanFromString(string key)
-        {
-            object obj = this[key];
-
-            return ((string)obj).ToUpper(CultureInfo.InvariantCulture).Equals("TRUE");
         }
 
         /// <summary>
@@ -225,7 +243,7 @@ namespace Quartz
         /// </summary>
         public virtual char GetCharFromString(string key)
         {
-            object obj = this[key];
+            object obj = Get(key);
 
             return ((string) obj)[0];
         }
@@ -235,8 +253,8 @@ namespace Quartz
         /// </summary>
         public virtual double GetDoubleValueFromString(string key)
         {
-            object obj = this[key];
-            return Double.Parse((string)obj, CultureInfo.InvariantCulture);
+            object obj = Get(key);
+            return Double.Parse((string) obj, CultureInfo.InvariantCulture);
         }
 
         /// <summary>
@@ -244,23 +262,14 @@ namespace Quartz
         /// </summary>
         public virtual double GetDoubleValue(string key)
         {
-            object obj = this[key];
+            object obj = Get(key);
 
             if (obj is string)
             {
                 return GetDoubleValueFromString(key);
             }
-            
-            return GetDouble(key);
-        }
 
-        /// <summary>
-        /// Retrieve the identified <see cref="Double" /> value from the <see cref="JobDataMap" />.
-        /// </summary>
-        public virtual Double GetDoubleFromString(string key)
-        {
-            object obj = this[key];
-            return Double.Parse((string)obj, CultureInfo.InvariantCulture);
+            return GetDouble(key);
         }
 
         /// <summary>
@@ -268,8 +277,8 @@ namespace Quartz
         /// </summary>
         public virtual float GetFloatValueFromString(string key)
         {
-            object obj = this[key];
-            return Single.Parse((string)obj, CultureInfo.InvariantCulture);
+            object obj = Get(key);
+            return Single.Parse((string) obj, CultureInfo.InvariantCulture);
         }
 
         /// <summary>
@@ -277,23 +286,14 @@ namespace Quartz
         /// </summary>
         public virtual float GetFloatValue(string key)
         {
-            object obj = this[key];
+            object obj = Get(key);
 
             if (obj is string)
             {
                 return GetFloatValueFromString(key);
             }
-            
-            return GetFloat(key);
-        }
 
-        /// <summary>
-        /// Retrieve the identified <see cref="float" /> value from the <see cref="JobDataMap" />.
-        /// </summary>
-        public virtual Single GetFloatFromString(string key)
-        {
-            object obj = this[key];
-            return Single.Parse((string)obj, CultureInfo.InvariantCulture);
+            return GetFloat(key);
         }
 
         /// <summary>
@@ -301,8 +301,39 @@ namespace Quartz
         /// </summary>
         public virtual long GetLongValueFromString(string key)
         {
-            object obj = this[key];
-            return Int64.Parse((string)obj, CultureInfo.InvariantCulture);
+            object obj = Get(key);
+            return Int64.Parse((string) obj, CultureInfo.InvariantCulture);
+        }
+
+        /// <summary>
+        /// Retrieve the identified <see cref="DateTime" /> value from the <see cref="JobDataMap" />.
+        /// </summary>
+        public virtual DateTime GetDateTimeValueFromString(string key)
+        {
+            object obj = Get(key);
+            return DateTime.Parse((string) obj, CultureInfo.InvariantCulture);
+        }
+
+        /// <summary>
+        /// Retrieve the identified <see cref="DateTimeOffset" /> value from the <see cref="JobDataMap" />.
+        /// </summary>
+        public virtual DateTimeOffset GetDateTimeOffsetValueFromString(string key)
+        {
+            object obj = Get(key);
+            return DateTimeOffset.Parse((string) obj, CultureInfo.InvariantCulture);
+        }
+
+        /// <summary>
+        /// Retrieve the identified <see cref="TimeSpan" /> value from the <see cref="JobDataMap" />.
+        /// </summary>
+        public virtual TimeSpan GetTimeSpanValueFromString(string key)
+        {
+            object obj = Get(key);
+#if NET_40
+            return TimeSpan.Parse((string) obj, CultureInfo.InvariantCulture);
+#else
+            return TimeSpan.Parse((string) obj);
+#endif
         }
 
         /// <summary>
@@ -310,46 +341,63 @@ namespace Quartz
         /// </summary>
         public virtual long GetLongValue(string key)
         {
-            object obj = this[key];
+            object obj = Get(key);
 
             if (obj is string)
             {
                 return GetLongValueFromString(key);
             }
-            
+
             return GetLong(key);
         }
-
 
         /// <summary>
         /// Gets the date time.
         /// </summary>
         /// <param name="key">The key.</param>
         /// <returns></returns>
-        public DateTime GetDateTime(string key)
+        public virtual DateTime GetDateTimeValue(string key)
         {
-            object obj = this[key];
+            object obj = Get(key);
 
-            try
+            if (obj is string)
             {
-                return (DateTime) obj;
+                return GetDateTimeValueFromString(key);
             }
-            catch (Exception)
-            {
-                throw new InvalidCastException("Identified object is not a DateTime.");
-            }
+
+            return GetDateTime(key);
         }
 
         /// <summary>
-        /// Gets the value behind the specified key.
+        /// Gets the date time offset.
         /// </summary>
         /// <param name="key">The key.</param>
         /// <returns></returns>
-        public object Get(string key)
+        public virtual DateTimeOffset GetDateTimeOffsetValue(string key)
         {
-            object retValue;
-            TryGetValue(key, out retValue);
-            return retValue;
+            object obj = Get(key);
+
+            if (obj is string)
+            {
+                return GetDateTimeOffsetValueFromString(key);
+            }
+
+            return GetDateTimeOffset(key);
+        }
+
+        /// <summary>
+        /// Retrieve the identified <see cref="TimeSpan" /> value from the <see cref="JobDataMap" />.
+        /// </summary>
+        public virtual TimeSpan GetTimeSpanValue(string key)
+        {
+            object obj = Get(key);
+
+            if (obj is string)
+            {
+                return GetTimeSpanValueFromString(key);
+            }
+
+            return GetTimeSpan(key);
         }
     }
 }

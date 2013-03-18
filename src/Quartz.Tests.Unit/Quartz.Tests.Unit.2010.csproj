@@ -30,6 +30,8 @@
     <OldToolsVersion>3.5</OldToolsVersion>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <TargetFrameworkProfile />
+    <SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'">..\..\</SolutionDir>
+    <RestorePackages>true</RestorePackages>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <OutputPath>..\..\build\4.0\Debug\Quartz.Tests.Unit\</OutputPath>
@@ -38,7 +40,7 @@
     <CheckForOverflowUnderflow>false</CheckForOverflowUnderflow>
     <ConfigurationOverrideFile>
     </ConfigurationOverrideFile>
-    <DefineConstants>TRACE;DEBUG;NET_40,C5</DefineConstants>
+    <DefineConstants>TRACE;DEBUG;NET_40</DefineConstants>
     <DocumentationFile>
     </DocumentationFile>
     <DebugSymbols>true</DebugSymbols>
@@ -81,17 +83,17 @@
     <Reference Include="C5">
       <HintPath>..\..\lib\2.0\C5.dll</HintPath>
     </Reference>
-    <Reference Include="Common.Logging, Version=1.2.0.0, Culture=neutral, PublicKeyToken=af08829b84f0328e">
+    <Reference Include="Common.Logging, Version=2.1.2.0, Culture=neutral, PublicKeyToken=af08829b84f0328e, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\lib\2.0\Common.Logging.dll</HintPath>
+      <HintPath>..\..\packages\Common.Logging.2.1.2\lib\net40\Common.Logging.dll</HintPath>
     </Reference>
-    <Reference Include="nunit.framework, Version=2.5.2.9222, Culture=neutral, PublicKeyToken=96d09a1eb7f44a77, processorArchitecture=MSIL">
+    <Reference Include="nunit.framework, Version=2.6.2.12296, Culture=neutral, PublicKeyToken=96d09a1eb7f44a77, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\lib\2.0\nunit.framework.dll</HintPath>
+      <HintPath>..\..\packages\NUnit.2.6.2\lib\nunit.framework.dll</HintPath>
     </Reference>
-    <Reference Include="Rhino.Mocks, Version=3.2.0.781, Culture=neutral, PublicKeyToken=0b3305902db7183f, processorArchitecture=MSIL">
+    <Reference Include="Rhino.Mocks, Version=3.6.0.0, Culture=neutral, PublicKeyToken=0b3305902db7183f, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\lib\2.0\Rhino.Mocks.dll</HintPath>
+      <HintPath>..\..\packages\RhinoMocks.3.6.1\lib\net\Rhino.Mocks.dll</HintPath>
     </Reference>
     <Reference Include="System">
       <Name>System</Name>
@@ -102,9 +104,6 @@
     <Reference Include="System.Data">
       <Name>System.Data</Name>
     </Reference>
-    <Reference Include="System.XML">
-      <Name>System.XML</Name>
-    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="..\AssemblyInfo.cs">
@@ -113,7 +112,12 @@
     </Compile>
     <Compile Include="CalendarIntervalTriggerTest.cs" />
     <Compile Include="Core\ListenerManagerTest .cs" />
+    <Compile Include="CronScheduleBuilderTest.cs" />
     <Compile Include="CronTriggerTest.cs" />
+    <Compile Include="DailyTimeIntervalScheduleBuilderTest.cs" />
+    <Compile Include="DateBuilderTest.cs" />
+    <Compile Include="DisallowConcurrentJobExecutionTest.cs" />
+    <Compile Include="Impl\AdoJobStore\JobStoreCMTTest.cs" />
     <Compile Include="Impl\AdoJobStore\JobStoreSupportTest.cs" />
     <Compile Include="Impl\AdoJobStore\StubConnection.cs" />
     <Compile Include="Impl\AdoJobStore\UpdateTriggerTest.cs">
@@ -122,11 +126,16 @@
     <Compile Include="Impl\Calendar\BaseCalendarTest.cs" />
     <Compile Include="Impl\StdSchedulerFactoryTest.cs" />
     <Compile Include="Impl\Triggers\AbstractTriggerTest.cs" />
+    <Compile Include="Impl\Triggers\DailyTimeIntervalTriggerImplTest.cs" />
     <Compile Include="InterrubtableJobTest.cs" />
     <Compile Include="JobBuilderTest.cs" />
     <Compile Include="Job\SendMailJobTest.cs" />
     <Compile Include="Plugin\Xml\XMLSchedulingDataProcessorPluginTest.cs" />
+    <Compile Include="SchedulerListenerTest.cs" />
     <Compile Include="SchedulerTest.cs" />
+    <Compile Include="SerializationTest.cs" />
+    <Compile Include="Simpl\SimpleInstanceIdGeneratorTest.cs" />
+    <Compile Include="Simpl\SystemPropertyInstanceIdGeneratorTest.cs" />
     <Compile Include="TestUtil.cs" />
     <Compile Include="Core\QuartzSchedulerTest.cs" />
     <Compile Include="CronExpressionTest.cs">
@@ -153,9 +162,6 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="JobExecutionContextTest.cs" />
-    <Compile Include="NthIncludedDayTriggerTest.cs">
-      <SubType>Code</SubType>
-    </Compile>
     <Compile Include="Plugin\History\LoggingJobHistoryPluginTest.cs" />
     <Compile Include="Plugin\History\LoggingTriggerHistoryPluginTest.cs" />
     <Compile Include="PriorityTest.cs">
@@ -189,6 +195,37 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />
+    <None Include="packages.config" />
+    <None Include="Serialized\AnnualCalendar_10.ser">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="Serialized\BaseCalendar_10.ser">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="Serialized\CronCalendar_10.ser">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="Serialized\DailyCalendar_10.ser">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="Serialized\HashSet_10.ser">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="Serialized\HolidayCalendar_10.ser">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="Serialized\JobDataMap_10.ser">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="Serialized\MonthlyCalendar_10.ser">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="Serialized\TreeSet_10.ser">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="Serialized\WeeklyCalendar_10.ser">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Xml\TestData\MinimalConfiguration_20.xml" />
@@ -199,10 +236,6 @@
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Quartz.Examples\Quartz.Examples.2010.csproj">
-      <Project>{70A37974-17DE-474C-8A1C-19637622E75F}</Project>
-      <Name>Quartz.Examples.2010</Name>
-    </ProjectReference>
     <ProjectReference Include="..\Quartz\Quartz.2010.csproj">
       <Project>{AEF8823B-E45B-4B35-A4D0-C08C1196D017}</Project>
       <Name>Quartz.2010</Name>
@@ -213,6 +246,15 @@
       <SubType>Designer</SubType>
     </EmbeddedResource>
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Xml\TestData\SimpleJobTrigger.xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Xml\TestData\DirectivesNoOverwriteIgnoreDups.xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Xml\TestData\ScheduleRelativeToOldTrigger.xml" />
+  </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PreBuildEvent>
@@ -220,4 +262,5 @@
     <PostBuildEvent>
     </PostBuildEvent>
   </PropertyGroup>
+  <Import Project="$(SolutionDir)\.nuget\nuget.targets" />
 </Project>

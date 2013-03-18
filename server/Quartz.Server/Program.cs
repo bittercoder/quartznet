@@ -10,34 +10,23 @@ namespace Quartz.Server
         /// <summary>
         /// Main.
         /// </summary>
-        /// <param name="args"></param>
-        public static void Main(string[] args)
+        public static void Main()
         {
-            Host host = HostFactory.New(x =>   
-            {
-                x.Service<QuartzServer>(s =>               
-                {
-                    s.SetServiceName("quartz.server");                                
-                    s.ConstructUsing(builder =>
-                                            {
-                                                QuartzServer server = new QuartzServer();
-                                                server.Initialize();
-                                                return server;
-                                            });  
-                    s.WhenStarted(server => server.Start());
-                    s.WhenPaused(server => server.Pause());
-                    s.WhenContinued(server => server.Resume());
-                    s.WhenStopped(server => server.Stop());             
-                });
-                x.RunAsLocalSystem();                            
+            HostFactory.Run(x =>
+                                {
+                                    x.RunAsLocalSystem();
 
-                x.SetDescription(Configuration.ServiceDescription);        
-                x.SetDisplayName(Configuration.ServiceDisplayName);                      
-                x.SetServiceName(Configuration.ServiceName);                       
-            });
+                                    x.SetDescription(Configuration.ServiceDescription);
+                                    x.SetDisplayName(Configuration.ServiceDisplayName);
+                                    x.SetServiceName(Configuration.ServiceName);
 
-            host.Run();
+                                    x.Service(factory =>
+                                                  {
+                                                      QuartzServer server = new QuartzServer();
+                                                      server.Initialize();
+                                                      return server;
+                                                  });
+                                });
         }
-
     }
 }

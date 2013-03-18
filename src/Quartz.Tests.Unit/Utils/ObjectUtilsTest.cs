@@ -24,6 +24,7 @@ using System.Collections.Specialized;
 
 using NUnit.Framework;
 
+using Quartz.Spi;
 using Quartz.Util;
 
 namespace Quartz.Tests.Unit.Utils
@@ -33,39 +34,74 @@ namespace Quartz.Tests.Unit.Utils
     public class ObjectUtilsTest
     {
         [Test]
-        public void TestNullObjectForValueType()
+        public void NullObjectForValueTypeShouldReturnDefaultforValueType()
         {
-            try
-            {
-                ObjectUtils.ConvertValueIfNecessary(typeof (int), null);
-                Assert.Fail("Accepted null");
-            }
-            catch
-            {
-                // ok
-            }
+            object value = ObjectUtils.ConvertValueIfNecessary(typeof(int), null);
+            Assert.AreEqual(0, value);
         }
 
         [Test]
-        public void TestNotConvertableData()
+        public void NotConvertableDataShouldTrhowNotSupportedException()
         {
-            try
-            {
-                ObjectUtils.ConvertValueIfNecessary(typeof (int), new DirtyFlagMap<int, string>());
-                Assert.Fail("Accepted null");
-            }
-            catch
-            {
-                // ok
-            }
+            Assert.Throws<NotSupportedException>(() => ObjectUtils.ConvertValueIfNecessary(typeof(int), new DirtyFlagMap<int, string>()));
         }
 
         [Test]
-        public void TestTimeSpanConversion()
+        public void TimeSpanConversionShouldWork()
         {
             TimeSpan ts = (TimeSpan) ObjectUtils.ConvertValueIfNecessary(typeof (TimeSpan), "1");
             Assert.AreEqual(1, ts.TotalDays);
         }
+
+                [Test]
+        public void TestConvertAssignable()
+        {
+            ICloneable val = (ICloneable) ObjectUtils.ConvertValueIfNecessary(typeof (ICloneable), "test");
+            Assert.AreEqual("test", val);
+        }
+
+        [Test]
+        public void TestConvertStringToEnum()
+        {
+            DayOfWeek val = (DayOfWeek) ObjectUtils.ConvertValueIfNecessary(typeof (DayOfWeek), "Wednesday");
+            Assert.AreEqual(DayOfWeek.Wednesday, val);
+        }
+
+        [Test]
+        public void TestConvertEnumToString()
+        {
+            string val = (string) ObjectUtils.ConvertValueIfNecessary(typeof (string), DayOfWeek.Wednesday);
+            Assert.AreEqual("Wednesday", val);
+        }
+
+        [Test]
+        public void TestConvertIntToDouble()
+        {
+            double val = (double) ObjectUtils.ConvertValueIfNecessary(typeof (double), 1234);
+            Assert.AreEqual(1234.0, val);
+        }
+
+        [Test]
+        public void TestConvertDoubleToInt()
+        {
+            int val = (int) ObjectUtils.ConvertValueIfNecessary(typeof (int), 1234.5);
+            Assert.AreEqual(1234, val);
+        }
+
+        [Test]
+        public void TestConvertStringToType()
+        {
+            Type val = (Type) ObjectUtils.ConvertValueIfNecessary(typeof (Type), "System.String");
+            Assert.AreEqual(typeof (string), val);
+        }
+
+        [Test]
+        public void TestConvertTypeToString()
+        {
+            string val = (string) ObjectUtils.ConvertValueIfNecessary(typeof (string), typeof (string));
+            Assert.AreEqual("System.String", val);
+        }
+
 
         [Test]
         public void TestSetObjectTimeSpanProperties()
@@ -95,6 +131,14 @@ namespace Quartz.Tests.Unit.Utils
             Assert.IsFalse(ObjectUtils.IsAttributePresent(typeof (ExtendedJob), typeof (PersistJobDataAfterExecutionAttribute)));
             Assert.IsTrue(ObjectUtils.IsAttributePresent(typeof (ReallyExtendedJob), typeof (DisallowConcurrentExecutionAttribute)));
             Assert.IsTrue(ObjectUtils.IsAttributePresent(typeof (ReallyExtendedJob), typeof (PersistJobDataAfterExecutionAttribute)));
+        }
+
+        [Test]
+        public void ShouldBeAbleToSetValuesToExplicitlyImplementedInterfaceMembers()
+        {
+            ExplicitImplementor testObject = new ExplicitImplementor();
+            ObjectUtils.SetObjectProperties(testObject, new[] {"InstanceName"}, new object[] {"instance"});
+            Assert.That(testObject.InstanceName, Is.EqualTo("instance"));
         }
 
         [DisallowConcurrentExecution]
@@ -156,6 +200,51 @@ namespace Quartz.Tests.Unit.Utils
                 get { return timeDefault; }
                 set { timeDefault = value; }
             }
+        }
+    }
+
+    internal class ExplicitImplementor : IThreadPool
+    {
+        private string instanceName;
+
+        bool IThreadPool.RunInThread(IThreadRunnable runnable)
+        {
+            throw new NotImplementedException();
+        }
+
+        int IThreadPool.BlockForAvailableThreads()
+        {
+            throw new NotImplementedException();
+        }
+
+        void IThreadPool.Initialize()
+        {
+            throw new NotImplementedException();
+        }
+
+        void IThreadPool.Shutdown(bool waitForJobsToComplete)
+        {
+            throw new NotImplementedException();
+        }
+
+        int IThreadPool.PoolSize
+        {
+            get { throw new NotImplementedException(); }
+        }
+
+        string IThreadPool.InstanceId
+        {
+            set { throw new NotImplementedException(); }
+        }
+
+        string IThreadPool.InstanceName
+        {
+            set { instanceName = value; }
+        }
+
+        public string InstanceName
+        {
+            get { return instanceName; }
         }
     }
 }

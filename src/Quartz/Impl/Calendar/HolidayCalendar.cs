@@ -18,8 +18,11 @@
 #endregion
 
 using System;
+using System.Runtime.Serialization;
+using System.Security;
 
 using Quartz.Collection;
+using Quartz.Util;
 
 namespace Quartz.Impl.Calendar
 {
@@ -66,6 +69,58 @@ namespace Quartz.Impl.Calendar
 		{
 			CalendarBase = baseCalendar;
 		}
+        
+        /// <summary>
+        /// Serialization constructor.
+        /// </summary>
+        /// <param name="info"></param>
+        /// <param name="context"></param>
+        protected HolidayCalendar(SerializationInfo info, StreamingContext context) : base(info, context)
+        {
+            int version;
+            try
+            {
+                version = info.GetInt32("version");
+            }
+            catch
+            {
+                version = 0;
+            }
+
+            switch (version)
+            {
+                case 0:
+                    object o = info.GetValue("dates", typeof(object));
+                    TreeSet oldTreeset = o as TreeSet;
+                    if (oldTreeset != null)
+                    {
+                        foreach (DateTime dateTime in oldTreeset)
+                        {
+                            dates.Add(dateTime);
+                        }
+                    }
+                    else
+                    {
+                        // must be generic treeset 
+                        dates = (TreeSet<DateTime>) o;
+                    }
+                    break;
+                case 1:
+                    dates = (TreeSet<DateTime>) info.GetValue("dates", typeof(TreeSet<DateTime>));
+                    break;
+                default:
+                    throw new NotSupportedException("Unknown serialization version");
+            }
+
+        }
+
+        [SecurityCritical]
+        public override void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            base.GetObjectData(info, context);
+            info.AddValue("version", 1);
+            info.AddValue("dates", dates);
+        }
 
 		/// <summary>
 		/// Determine whether the given time (in milliseconds) is 'included' by the
@@ -81,7 +136,9 @@ namespace Quartz.Impl.Calendar
 				return false;
 			}
 
-			DateTime lookFor = timeStampUtc.Date;
+            //apply the timezone
+            timeStampUtc = TimeZoneUtil.ConvertTime(timeStampUtc, this.TimeZone);
+            DateTime lookFor = timeStampUtc.Date;
 
 			return !(dates.Contains(lookFor));
 		}
@@ -102,15 +159,18 @@ namespace Quartz.Impl.Calendar
 				timeUtc = baseTime;
 			}
 
-			// Get timestamp for 00:00:00
-			DateTime day = timeUtc.Date;
+            //apply the timezone
+            timeUtc = TimeZoneUtil.ConvertTime(timeUtc, this.TimeZone);
+
+            // Get timestamp for 00:00:00, with the correct timezone offset
+            DateTimeOffset day = new DateTimeOffset(timeUtc.Date, timeUtc.Offset);
 
 			while (!IsTimeIncluded(day))
 			{
 				day = day.AddDays(1);
 			}
 
-            return TimeZoneInfo.ConvertTimeToUtc(day);
+            return day;
 		}
 
 	    /// <summary>
@@ -162,8 +222,7 @@ namespace Quartz.Impl.Calendar
                 return false;
             }
 
-            bool baseEqual = GetBaseCalendar() != null ?
-                             GetBaseCalendar().Equals(obj.GetBaseCalendar()) : true;
+            bool baseEqual = GetBaseCalendar() == null || GetBaseCalendar().Equals(obj.GetBaseCalendar());
 
             return baseEqual && (ExcludedDates.Equals(obj.ExcludedDates));
 

@@ -17,9 +17,7 @@
  */
 #endregion
 
-using Common.Logging;
-
-using Quartz.Spi;
+using System;
 
 namespace Quartz.Impl.AdoJobStore
 {
@@ -29,63 +27,40 @@ namespace Quartz.Impl.AdoJobStore
     /// <author>Marko Lahma</author>
     public class OracleDelegate : StdAdoDelegate
     {
-        private string sqlSelectNextTriggerToAcquire;
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="OracleDelegate"/> class.
-        /// </summary>
-        /// <param name="logger">the logger to use during execution</param>
-        /// <param name="tablePrefix">the prefix of all table names</param>
-        /// <param name="schedName">the scheduler name</param>
-        /// <param name="instanceId">The instance id.</param>
-        /// <param name="dbProvider">The db provider.</param>
-        /// <param name="typeLoadHelper">the type loader helper</param>
-        public OracleDelegate(ILog logger, string tablePrefix, string schedName, string instanceId, IDbProvider dbProvider, ITypeLoadHelper typeLoadHelper)
-            : base(logger, tablePrefix, schedName, instanceId, dbProvider, typeLoadHelper)
-        {
-            CreateSqlForSelectNextTriggerToAcquire();
-        }
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="OracleDelegate"/> class.
-        /// </summary>
-        /// <param name="logger">The logger.</param>
-        /// <param name="tablePrefix">The table prefix.</param>
-        /// <param name="schedName">the scheduler name</param>
-        /// <param name="instanceId">The instance id.</param>
-        /// <param name="dbProvider">The db provider.</param>
-        /// <param name="typeLoadHelper">the type loader helper</param>
-        /// <param name="useProperties">if set to <c>true</c> [use properties].</param>
-        public OracleDelegate(ILog logger, string tablePrefix, string schedName, string instanceId, IDbProvider dbProvider, ITypeLoadHelper typeLoadHelper, bool useProperties)
-            : base(logger, tablePrefix, schedName, instanceId, dbProvider, typeLoadHelper, useProperties)
-        {
-            CreateSqlForSelectNextTriggerToAcquire();
-        }
-
         /// <summary>
         /// Creates the SQL for select next trigger to acquire.
         /// </summary>
-        private void CreateSqlForSelectNextTriggerToAcquire()
+        protected override string GetSelectNextTriggerToAcquireSql(int maxCount)
         {
-            sqlSelectNextTriggerToAcquire = SqlSelectNextTriggerToAcquire;
+            string sqlSelectNextTriggerToAcquire = SqlSelectNextTriggerToAcquire;
 
             int whereEndIdx = sqlSelectNextTriggerToAcquire.IndexOf("WHERE") + 6;
             string beginningAndWhere = sqlSelectNextTriggerToAcquire.Substring(0, whereEndIdx);
             string theRest = sqlSelectNextTriggerToAcquire.Substring(whereEndIdx);
 
             // add limit clause to correct place
-            sqlSelectNextTriggerToAcquire = beginningAndWhere + " rownum <= " + TriggersToAcquireLimit + " AND " + theRest;
+            return beginningAndWhere + " rownum <= " + maxCount + " AND " + theRest;
         }
 
         /// <summary>
-        /// Gets the select next trigger to acquire SQL clause.
-        /// Oracle version with rownum support.
+        /// Gets the db presentation for boolean value. For Oracle we use true/false of "1"/"0".
         /// </summary>
+        /// <param name="booleanValue">Value to map to database.</param>
         /// <returns></returns>
-        protected override string GetSelectNextTriggerToAcquireSql()
+        public override object GetDbBooleanValue(bool booleanValue)
         {
-            return sqlSelectNextTriggerToAcquire;
+            return booleanValue ? "1" : "0";
         }
 
+        public override bool GetBooleanFromDbValue(object columnValue)
+        {
+            // we store things as string in oracle with 1/0 as value
+            if (columnValue != null && columnValue != DBNull.Value)
+            {
+                return Convert.ToInt32(columnValue) == 1;
+            }
+
+            throw new ArgumentException("Value must be non-null.");
+        }
     }
 }

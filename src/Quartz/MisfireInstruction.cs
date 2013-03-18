@@ -19,6 +19,8 @@
 
 #endregion
 
+using System;
+
 namespace Quartz
 {
     ///<summary>
@@ -39,7 +41,7 @@ namespace Quartz
 
         /// <summary>
         /// Instructs the <see cref="IScheduler" /> that the
-        /// <code>Trigger</code> will never be evaluated for a misfire situation,
+        /// <see cref="ITrigger" /> will never be evaluated for a misfire situation,
         /// and that the scheduler will simply try to fire it as soon as it can,
         /// and then update the Trigger as if it had fired at the proper time.
         /// </summary>
@@ -168,27 +170,6 @@ namespace Quartz
         }
 
         /// <summary>
-        /// misfire instructions for NthIncludedDayTrigger
-        /// </summary>
-        public struct NthIncludedDayTrigger
-        {
-            /// <summary> 
-            /// Instructs the <see cref="IScheduler" /> that upon a mis-fire situation, the
-            /// <see cref="NthIncludedDayTrigger" /> wants to be fired now by the 
-            /// <see cref="IScheduler" />
-            /// </summary>
-            public const int FireOnceNow = 1;
-
-            /// <summary> 
-            /// Instructs the <see cref="IScheduler" /> that upon a mis-fire situation, the
-            /// <see cref="NthIncludedDayTrigger" /> wants to have 
-            /// nextFireTime updated to the next time in the schedule after
-            /// the current time, but it does not want to be fired now.
-            /// </summary>
-            public const int DoNothing = 2;
-        }
-
-        /// <summary>
         /// Misfire instructions for DateIntervalTrigger
         /// </summary>
         public struct CalendarIntervalTrigger
@@ -209,5 +190,30 @@ namespace Quartz
             /// </summary>
             public const int DoNothing = 2;
         }
+
+        /// <summary>
+        /// Misfire instructions for DailyTimeIntervalTrigger
+        /// </summary>
+        public struct DailyTimeIntervalTrigger
+        {
+            /// <summary>
+            /// Instructs the <see cref="IScheduler" /> that upon a mis-fire
+            /// situation, the <see cref="IDailyTimeIntervalTrigger" /> wants to be
+            /// fired now by <see cref="IScheduler" />.
+            /// </summary>
+            public const int FireOnceNow = 1;
+
+            /// <summary>
+            /// Instructs the <see cref="IScheduler" /> that upon a mis-fire
+            /// situation, the <see cref="DailyTimeIntervalTrigger" /> wants to have it's
+            /// next-fire-time updated to the next time in the schedule after the
+            /// current time (taking into account any associated <see cref="ICalendar" />,
+            /// but it does not want to be fired now.
+            /// </summary>
+            public const int DoNothing = 2;
+        }
+
     }
+
+
 }

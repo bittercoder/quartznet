@@ -29,7 +29,7 @@ using Quartz.Impl;
 namespace Quartz.Examples.Example2
 {
     /// <summary> 
-    /// This Example will demonstrate all of the basics of scheduling capabilities
+    /// This example will demonstrate all of the basics of scheduling capabilities
     /// of Quartz using Simple Triggers.
     /// </summary>
     /// <author>Bill Kratzer</author>
@@ -152,7 +152,7 @@ namespace Quartz.Examples.Example2
 
             trigger = (ISimpleTrigger) TriggerBuilder.Create()
                                            .WithIdentity("trigger5", "group1")
-                                           .StartAt(DateBuilder.FutureDate(5, DateBuilder.IntervalUnit.Minute))
+                                           .StartAt(DateBuilder.FutureDate(5, IntervalUnit.Minute))
                                            .Build();
 
             ft = sched.ScheduleJob(job, trigger);

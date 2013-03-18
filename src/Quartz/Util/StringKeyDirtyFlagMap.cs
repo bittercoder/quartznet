@@ -1,4 +1,5 @@
 #region License
+
 /* 
  * All content copyright Terracotta, Inc., unless otherwise indicated. All rights reserved. 
  * 
@@ -15,11 +16,14 @@
  * under the License.
  * 
  */
+
 #endregion
 
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Globalization;
+using System.Runtime.Serialization;
 
 namespace Quartz.Util
 {
@@ -44,6 +48,15 @@ namespace Quartz.Util
         /// </summary>
         /// <param name="initialCapacity">The initial capacity.</param>
         public StringKeyDirtyFlagMap(int initialCapacity) : base(initialCapacity)
+        {
+        }
+
+        /// <summary>
+        /// Serialization constructor.
+        /// </summary>
+        /// <param name="info"></param>
+        /// <param name="context"></param>
+        protected StringKeyDirtyFlagMap(SerializationInfo info, StreamingContext context) : base(info, context)
         {
         }
 
@@ -76,9 +89,9 @@ namespace Quartz.Util
         /// Gets the keys.
         /// </summary>
         /// <returns></returns>
-        public virtual string[] GetKeys()
+        public virtual IList<string> GetKeys()
         {
-            return new List<string>(KeySet()).ToArray();
+            return new List<string>(KeySet());
         }
 
         /// <summary>
@@ -276,6 +289,41 @@ namespace Quartz.Util
             {
                 throw new InvalidCastException("Identified object is not a String.");
             }
+        }
+
+        /// <summary>
+        /// Retrieve the identified <see cref="DateTime" /> value from the <see cref="JobDataMap" />. 
+        /// </summary>
+        public virtual DateTime GetDateTime(string key)
+        {
+            object obj = this[key];
+
+            try
+            {
+                return Convert.ToDateTime(obj, CultureInfo.InvariantCulture);
+            }
+            catch (Exception)
+            {
+                throw new InvalidCastException("Identified object is not a DateTime.");
+            }
+        }
+
+        /// <summary>
+        /// Retrieve the identified <see cref="DateTimeOffset" /> value from the <see cref="JobDataMap" />. 
+        /// </summary>
+        public virtual DateTimeOffset GetDateTimeOffset(string key)
+        {
+            object obj = this[key];
+            return (DateTimeOffset) obj;
+        }
+
+        /// <summary>
+        /// Retrieve the identified <see cref="TimeSpan" /> value from the <see cref="JobDataMap" />. 
+        /// </summary>
+        public virtual TimeSpan GetTimeSpan(string key)
+        {
+            object obj = this[key];
+            return (TimeSpan) obj;
         }
     }
 }
